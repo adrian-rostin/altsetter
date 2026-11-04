@@ -1,9 +1,6 @@
 import { computed, signal } from '@angular/core';
-import { MOBILE_BREAKPOINT, SHEET_RATIO } from '../../layout/panel-layout';
+import { MOBILE_BREAKPOINT, SHEET_GAP, SHEET_RATIO } from '../../layout/panel-layout';
 
-/** Gap above the sheet when pulled up to full screen, and below it (matches bottom-6). */
-const FULL_TOP_GAP = 12;
-const BOTTOM_GAP = 24;
 /** Smallest height while dragging, and how far a drag must move before it counts. */
 const MIN_HEIGHT = 120;
 const DRAG_THRESHOLD = 4;
@@ -24,7 +21,7 @@ export class BottomSheet {
     if (!this.active()) return null;
     const drag = this.dragHeight();
     if (drag !== null) return `${drag}px`;
-    return this.full() ? `calc(100dvh - ${FULL_TOP_GAP + BOTTOM_GAP}px)` : null;
+    return this.full() ? `calc(100dvh - ${2 * SHEET_GAP}px)` : null;
   });
 
   /** Animate snapping, but follow the finger directly while dragging. */
@@ -85,6 +82,6 @@ export class BottomSheet {
   }
 
   private fullHeight(): number {
-    return window.innerHeight - FULL_TOP_GAP - BOTTOM_GAP;
+    return window.innerHeight - 2 * SHEET_GAP; // same gap above as below
   }
 }

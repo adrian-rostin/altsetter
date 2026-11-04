@@ -13,10 +13,11 @@
   </div>
 }
 
-<!-- Hover label, follows the pointer -->
+<!-- Hover label in liquid glass, follows the pointer -->
 @if (hoverLabel(); as label) {
   <div
-    class="pointer-events-none absolute z-10 rounded-lg border border-line/70 bg-surface/90 px-3 py-1.5 shadow-lg backdrop-blur"
+    appGlass
+    class="pointer-events-none absolute z-10 rounded-2xl px-3.5 py-2"
     [style.left.px]="label.x + 16"
     [style.top.px]="label.y + 16"
   >
@@ -30,7 +31,7 @@
 <!-- Placeholder notice -->
 @if (loadState() === 'placeholder') {
   <div
-    class="absolute top-24 left-5 max-w-xs rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-200/90 backdrop-blur"
+    class="absolute top-24 left-5 max-w-xs rounded-lg bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-200/90 backdrop-blur"
   >
     <span class="font-semibold">{{ t().viewer.placeholderTitle }}</span>
     {{ t().viewer.placeholderBefore }}

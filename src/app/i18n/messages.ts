@@ -6,7 +6,6 @@ import { type Difficulty } from '../models/exercise.model';
  * come from the API in the selected language.
  */
 const de = {
-  siteTitle: 'Altsetter – Übungen für jeden Muskel',
   siteDescription:
     'Tippe einen Muskel am 3D-Körper an und finde passende Übungen fürs Gym – mit Ausführungstipps und häufigen Fehlern.',
 
@@ -66,7 +65,6 @@ const de = {
 export type Messages = typeof de;
 
 const en: Messages = {
-  siteTitle: 'Altsetter – Exercises for every muscle',
   siteDescription:
     'Tap a muscle on the 3D body and find matching gym exercises – with form tips and common mistakes.',
 

@@ -24,6 +24,7 @@ import { ExerciseService } from '../../services/exercise.service';
 import { buildPlaceholderBody } from './placeholder-body';
 import { MOBILE_BREAKPOINT, panelLayout, sheetFrame } from '../../layout/panel-layout';
 import { meshLabel } from '../../shared/exercise-format';
+import { Glass } from '../../shared/liquid-glass';
 
 // Raycasting through a bounding volume hierarchy instead of testing every triangle: hover picking
 // and the view-direction checks go from tens/hundreds of ms to well under 1 ms.
@@ -64,6 +65,18 @@ interface Flight {
   thetaDelta: number;
 }
 
+/** Position (view offset, px) and scale of the rendered picture. */
+interface Frame {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+interface FrameMove {
+  start: number;
+  from: Frame;
+}
+
 /** Colours of a material before any highlighting. */
 interface OriginalLook {
   color: THREE.Color;
@@ -72,6 +85,7 @@ interface OriginalLook {
 
 @Component({
   selector: 'app-muscle-viewer',
+  imports: [Glass],
   templateUrl: './muscle-viewer.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Positioned by the parent (absolute inset-0); overlays inside are absolutely positioned.
@@ -117,7 +131,11 @@ export class MuscleViewer {
    * muscle catalog arrives from the API.
    */
   private linkKeys = new WeakMap<THREE.Object3D, { group: string; family: string | null }>();
-  private readonly viewOffset = new THREE.Vector2();
+  /** Where the picture currently sits (view offset, px) and how far it is scaled down. */
+  private frame: Frame = { x: 0, y: 0, zoom: 1 };
+  /** Picture moving to make room for the panel, or back; runs alongside the camera flight. */
+  private frameMove: FrameMove | null = null;
+  private framedForPanel = false;
   /** Full-body view, set when the model is framed; the camera returns here when nothing is selected. */
   private home: CameraPose | null = null;
   private flight: Flight | null = null;
@@ -547,7 +565,7 @@ export class MuscleViewer {
     const f = this.flight;
     if (!f) return;
     const t = Math.min(1, (performance.now() - f.start) / FLIGHT_MS);
-    const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; // ease in-out
+    const e = easeInOut(t);
     this.controls.target.lerpVectors(f.fromTarget, f.toTarget, e);
     const s = new THREE.Spherical(
       THREE.MathUtils.lerp(f.from.radius, f.to.radius, e),
@@ -715,7 +733,9 @@ export class MuscleViewer {
     // While the exercise card animates, hold everything (the last frame stays visible) and keep a
     // pending camera flight at its start, so it begins right after the card animation.
     if (this.exercises.cardAnimating()) {
-      if (this.flight) this.flight.start = performance.now();
+      const now = performance.now();
+      if (this.flight) this.flight.start = now;
+      if (this.frameMove) this.frameMove.start = now;
       return;
     }
     this.stepFlight();
@@ -727,41 +747,58 @@ export class MuscleViewer {
   /**
    * Slides the rendered image so the body sits in the free space next to the panel.
    * Uses the camera's view offset, so orbiting and raycasting keep working unchanged.
+   *
+   * When the panel opens or closes, the picture moves with the same duration and easing as the
+   * camera flight that starts at the same moment. Two different speeds made the body jump: first
+   * shrink or slide quickly, then zoom slowly.
    */
   private updateViewOffset(): void {
     const { clientWidth: w, clientHeight: h } = this.host.nativeElement;
     if (!w || !h) return;
-    let tx = 0;
-    let ty = 0;
-    let zoom = 1;
-    if (this.panelOpen()) {
-      const layout = panelLayout(w);
-      if (layout.mode === 'side') {
-        // Positive offset moves the image left; the body lands at layout.bodyCenterX.
-        tx = w / 2 - layout.bodyCenterX;
-      } else {
-        // Bottom sheet: shrink the picture so it fits between the header and the sheet, centred there.
-        const frame = sheetFrame(h);
-        ty = h / 2 - (frame.freeTop + frame.freeBottom) / 2;
-        zoom = frame.zoom;
-      }
+    const open = this.panelOpen();
+    const target = this.frameFor(w, h, open);
+
+    const now = performance.now();
+    if (open !== this.framedForPanel) {
+      this.framedForPanel = open;
+      // Start together with the flight that this selection change began.
+      const flightStart = this.flight && now - this.flight.start < 100 ? this.flight.start : now;
+      this.frameMove = { start: flightStart, from: { ...this.frame } };
+    }
+    const move = this.frameMove;
+    if (move) {
+      const e = easeInOut(Math.min(1, (now - move.start) / FLIGHT_MS));
+      this.frame = {
+        x: THREE.MathUtils.lerp(move.from.x, target.x, e),
+        y: THREE.MathUtils.lerp(move.from.y, target.y, e),
+        zoom: THREE.MathUtils.lerp(move.from.zoom, target.zoom, e),
+      };
+      if (e >= 1) this.frameMove = null;
+    } else {
+      // Window resized: follow directly.
+      this.frame = target;
     }
 
-    // Ease towards the target each frame.
-    const target = new THREE.Vector2(tx, ty);
-    if (this.viewOffset.distanceTo(target) < 0.5) this.viewOffset.copy(target);
-    else this.viewOffset.lerp(target, 0.12);
-    const zoomDone = Math.abs(this.camera.zoom - zoom) < 0.002;
-    if (!zoomDone || this.camera.zoom !== zoom) {
-      this.camera.zoom = zoomDone ? zoom : THREE.MathUtils.lerp(this.camera.zoom, zoom, 0.12);
+    if (this.camera.zoom !== this.frame.zoom) {
+      this.camera.zoom = this.frame.zoom;
       this.camera.updateProjectionMatrix();
     }
-
-    if (this.viewOffset.lengthSq() === 0) {
+    if (this.frame.x === 0 && this.frame.y === 0) {
       if (this.camera.view?.enabled) this.camera.clearViewOffset();
       return;
     }
-    this.camera.setViewOffset(w, h, this.viewOffset.x, this.viewOffset.y, w, h);
+    this.camera.setViewOffset(w, h, this.frame.x, this.frame.y, w, h);
+  }
+
+  /** Where the picture belongs with the panel open or closed. */
+  private frameFor(w: number, h: number, panelOpen: boolean): Frame {
+    if (!panelOpen) return { x: 0, y: 0, zoom: 1 };
+    const layout = panelLayout(w);
+    // Positive offset moves the image left; the body lands at layout.bodyCenterX.
+    if (layout.mode === 'side') return { x: w / 2 - layout.bodyCenterX, y: 0, zoom: 1 };
+    // Bottom sheet: shrink the picture so it fits between the header and the sheet, centred there.
+    const sheet = sheetFrame(h);
+    return { x: 0, y: h / 2 - (sheet.freeTop + sheet.freeBottom) / 2, zoom: sheet.zoom };
   }
 
   private observeResize(): void {
@@ -819,4 +856,9 @@ function partOf(mesh: THREE.Object3D): THREE.Object3D {
 
 function partName(mesh: THREE.Object3D): string {
   return partOf(mesh).name;
+}
+
+/** Slow start, slow end (cubic); shared by the camera flight and the picture move. */
+function easeInOut(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }

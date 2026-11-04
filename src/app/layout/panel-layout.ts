@@ -16,6 +16,8 @@ const EDGE = 24;
 
 /** Share of the height the bottom sheet covers on phones (keep in sync with h-[55dvh] in app.html). */
 export const SHEET_RATIO = 0.55;
+/** Gap around the bottom sheet: left, right and below (keep in sync with inset-x-3 bottom-3). */
+export const SHEET_GAP = 12;
 /** Space the app name takes at the top on phones. */
 export const MOBILE_HEADER_HEIGHT = 64;
 
@@ -43,7 +45,7 @@ export interface SheetLayout {
  */
 export function sheetFrame(height: number): { freeTop: number; freeBottom: number; zoom: number } {
   const freeTop = MOBILE_HEADER_HEIGHT;
-  const freeBottom = height * (1 - SHEET_RATIO);
+  const freeBottom = height * (1 - SHEET_RATIO) - SHEET_GAP;
   return { freeTop, freeBottom, zoom: ((freeBottom - freeTop) / height) * 0.95 };
 }
 

@@ -1,7 +1,6 @@
 import { DOCUMENT, Location } from '@angular/common';
 import { Injectable, computed, effect, inject, untracked } from '@angular/core';
 import { Title } from '@angular/platform-browser';
-import { I18n } from '../i18n/i18n';
 import { ExerciseService } from './exercise.service';
 
 const SITE = 'Altsetter';
@@ -22,7 +21,6 @@ const ORIGIN = 'https://altsetter.adrianrostin.de';
 @Injectable({ providedIn: 'root' })
 export class UrlState {
   private readonly exercises = inject(ExerciseService);
-  private readonly i18n = inject(I18n);
   private readonly location = inject(Location);
   private readonly title = inject(Title);
   private readonly document = inject(DOCUMENT);
@@ -34,11 +32,11 @@ export class UrlState {
   private readonly target = computed(() => {
     const subject = this.exercises.selectedMuscle() ?? this.exercises.selectedFamily();
     const exercise = this.exercises.openExercise()?.exercise;
-    if (!subject) return { path: '/', title: this.i18n.t().siteTitle };
+    if (!subject) return { path: '/', title: SITE };
     const base = `/muscle/${subject.id}`;
     return exercise
-      ? { path: `${base}/${exercise.id}`, title: `${exercise.name} – ${SITE}` }
-      : { path: base, title: `${subject.name} – ${SITE}` };
+      ? { path: `${base}/${exercise.id}`, title: `${SITE} - ${exercise.name}` }
+      : { path: base, title: `${SITE} - ${subject.name}` };
   });
 
   constructor() {

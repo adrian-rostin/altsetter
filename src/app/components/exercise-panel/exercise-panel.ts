@@ -1,5 +1,6 @@
 import {
   ApplicationRef,
+  DestroyRef,
   ChangeDetectionStrategy,
   Component,
   ElementRef,
@@ -11,6 +12,7 @@ import {
   signal,
   untracked,
   viewChild,
+  viewChildren,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { I18n } from '../../i18n/i18n';
@@ -18,6 +20,7 @@ import { type Difficulty, type ExerciseSummary, type Muscle } from '../../models
 import { ExerciseService } from '../../services/exercise.service';
 import { difficultyClass, equipmentLabel, meshLabel } from '../../shared/exercise-format';
 import { runViewTransition } from '../../shared/view-transition';
+import { Glass } from '../../shared/liquid-glass';
 import { BottomSheet } from './bottom-sheet';
 
 interface Section {
@@ -28,6 +31,20 @@ interface Section {
   exercises: { exercise: ExerciseSummary; number: number }[];
 }
 
+/** Position and size of a family tab inside its glass selection (px). */
+interface TabBox {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** Top padding of the desktop list (md:py-6) and the fade at its top edge without tabs (px). */
+const LIST_PADDING_TOP = 24;
+const FADE = 20;
+/** Where the tab selection sticks on phones, level with the close button (max-md:top-4). */
+const STICKY_TOP = 16;
+
 /** Longest wait for the details before opening an exercise anyway. */
 const PREPARE_TIMEOUT_MS = 1500;
 
@@ -37,7 +54,7 @@ const PREPARE_TIMEOUT_MS = 1500;
  */
 @Component({
   selector: 'app-exercise-panel',
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, Glass],
   templateUrl: './exercise-panel.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -63,12 +80,19 @@ export class ExercisePanel {
     const family = this.exercises.selectedFamily();
     const subject = muscle ?? family;
     if (!subject) return null;
-    // Small line above the title: the family for a part ("Schulter" above "Seitliche Schulter"),
-    // otherwise the body region — unless it just repeats the title ("Brust" above "Brust").
-    let eyebrow: string | null = subject.region;
-    if (muscle && family) eyebrow = family.name;
-    else if (subject.region.toLowerCase().startsWith(subject.name.toLowerCase())) eyebrow = null;
-    return { eyebrow, name: subject.name, latinName: subject.latinName, summary: subject.summary };
+    return { name: subject.name, latinName: subject.latinName, summary: subject.summary };
+  });
+
+  /** Family tabs: 0 is "All", then one per part. */
+  protected readonly activeTab = computed(() => {
+    const muscle = this.exercises.selectedMuscle();
+    return muscle ? this.exercises.familyParts().findIndex((p) => p.id === muscle.id) + 1 : 0;
+  });
+  protected readonly hoveredTab = signal(-1);
+  /** Where the glass lens sits: on the hovered tab, else on the selected one. */
+  protected readonly lens = computed<TabBox | undefined>(() => {
+    const hovered = this.hoveredTab();
+    return this.tabBoxes()[hovered >= 0 ? hovered : this.activeTab()];
   });
 
   /**
@@ -125,6 +149,21 @@ export class ExercisePanel {
     };
   });
 
+  /**
+   * Desktop list: the list scrolls up behind the tab selection and fades out there, so the
+   * exercises show through the glass instead of ending at a hard line. Without tabs it just fades
+   * at the top edge.
+   */
+  protected readonly listUnderHeading = computed(() => {
+    if (this.sheet.active() || this.openExercise()) return null;
+    const { overlap, height } = this.pillArea();
+    return {
+      marginTop: -overlap,
+      paddingTop: overlap + LIST_PADDING_TOP,
+      mask: `linear-gradient(to bottom, transparent, black ${height || FADE}px)`,
+    };
+  });
+
   /** Minimum height of the detail page: the full card, so it fills the card when at the top. */
   protected readonly detailHeight = signal(0);
 
@@ -146,6 +185,16 @@ export class ExercisePanel {
   /** Scroll positions of the list before an exercise was opened, restored when going back. */
   private savedScroll = { scroller: 0, list: 0 };
 
+  private readonly tabs = viewChildren<ElementRef<HTMLElement>>('tab');
+  private readonly tabBoxes = signal<TabBox[]>([]);
+  private readonly tabBlock = viewChild<ElementRef<HTMLElement>>('tabBlock');
+  private readonly headingText = viewChild<ElementRef<HTMLElement>>('headingText');
+  /** Phones: whether the tab selection sticks at the top right now (see trackStuck). */
+  private tabsStuck = false;
+  private readonly tabPill = viewChild<ElementRef<HTMLElement>>('tabPill');
+  /** From the top of the tab selection to the end of its block, and its height (px). */
+  private readonly pillArea = signal({ overlap: 0, height: 0 });
+
   /** What the card shows: a family, a single muscle or an unknown mesh, and the selected part. */
   private readonly subjectKey = computed(
     () =>
@@ -161,6 +210,39 @@ export class ExercisePanel {
   constructor() {
     this.sheet = new BottomSheet(this.host.nativeElement, () => {
       this.exercises.clear();
+    });
+
+    // Measure the tabs whenever one changes size (other family, language, line break), so the lens
+    // knows where to go.
+    const tabObserver = new ResizeObserver(() => {
+      const block = this.tabBlock()?.nativeElement;
+      const pill = this.tabPill()?.nativeElement;
+      this.pillArea.set(
+        block && pill
+          ? {
+              overlap: block.getBoundingClientRect().bottom - pill.getBoundingClientRect().top,
+              height: pill.offsetHeight,
+            }
+          : { overlap: 0, height: 0 },
+      );
+      this.tabBoxes.set(
+        this.tabs().map(({ nativeElement: tab }) => ({
+          left: tab.offsetLeft,
+          top: tab.offsetTop,
+          width: tab.offsetWidth,
+          height: tab.offsetHeight,
+        })),
+      );
+    });
+    effect(() => {
+      const tabs = this.tabs();
+      tabObserver.disconnect();
+      for (const { nativeElement } of tabs) tabObserver.observe(nativeElement);
+      const block = this.tabBlock()?.nativeElement;
+      if (block) tabObserver.observe(block);
+    });
+    inject(DestroyRef).onDestroy(() => {
+      tabObserver.disconnect();
     });
 
     // Whenever no exercise is open (closed, other muscle picked, card closed), show the full list.
@@ -289,10 +371,16 @@ export class ExercisePanel {
     this.prefetch(exerciseId);
   }
 
-  protected tabClass(active: boolean): string {
-    return active
-      ? 'bg-accent text-on-accent'
-      : 'text-ink-muted hover:bg-paper-raised hover:text-ink';
+  /** Phones: remembers on every scroll whether the tab selection currently sticks at the top. */
+  protected trackStuck(): void {
+    const stickPoint = this.stickPoint();
+    const scroller = this.scroller()?.nativeElement;
+    this.tabsStuck = stickPoint !== null && !!scroller && scroller.scrollTop >= stickPoint - 1;
+  }
+
+  protected tabClass(index: number): string {
+    const highlighted = this.hoveredTab() >= 0 ? this.hoveredTab() : this.activeTab();
+    return index === highlighted ? 'text-ink' : 'text-ink-muted';
   }
 
   /**
@@ -340,15 +428,40 @@ export class ExercisePanel {
     if (scroller) scroller.scrollTop = 0;
   }
 
-  /** Start of the list: top of the list on desktop, just below the heading on phones. */
+  /**
+   * Desktop: the list starts from the top again. Phones: heading and list scroll together. While
+   * the heading is still visible the card stays where it is, so you can click quickly through the
+   * parts; once the selection sticks, the card goes back to the point where it starts sticking,
+   * so the new list begins right below it.
+   */
   private scrollToList(): void {
-    queueMicrotask(() => {
-      const list = this.list()?.nativeElement;
-      const scroller = this.scroller()?.nativeElement;
-      if (list) list.scrollTop = 0;
-      if (scroller && list && scroller.scrollHeight > scroller.clientHeight) {
-        scroller.scrollTop = list.offsetTop - scroller.offsetTop;
-      }
-    });
+    const list = this.list()?.nativeElement;
+    if (list) list.scrollTop = 0;
+    if (!this.sheet.active() || !this.tabsStuck) return;
+    afterNextRender(
+      () => {
+        // The heading of the new part may be longer or shorter, so measure after rendering.
+        const stickPoint = this.stickPoint();
+        const scroller = this.scroller()?.nativeElement;
+        if (stickPoint !== null && scroller) scroller.scrollTop = stickPoint;
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** Phones: scroll position at which the tab selection starts to stick (null without tabs). */
+  private stickPoint(): number | null {
+    const scroller = this.scroller()?.nativeElement;
+    const heading = this.headingText()?.nativeElement;
+    const block = this.tabBlock()?.nativeElement;
+    if (!this.sheet.active() || !scroller || !heading || !block) return null;
+    // Where the selection sits without sticking: right after the heading (plus its own margin).
+    // Layout offsets (both relative to the card) ignore scrolling and running animations.
+    const naturalTop =
+      heading.offsetTop +
+      heading.offsetHeight -
+      scroller.offsetTop +
+      parseFloat(getComputedStyle(block).marginTop);
+    return Math.max(0, naturalTop - STICKY_TOP);
   }
 }
