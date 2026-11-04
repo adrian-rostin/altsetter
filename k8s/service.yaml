@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: altsetter
+  namespace: altsetter
+  labels:
+    app.kubernetes.io/name: altsetter
+spec:
+  selector:
+    app.kubernetes.io/name: altsetter
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

@@ -1,0 +1,181 @@
+<main
+  class="relative h-dvh w-screen overflow-hidden bg-[radial-gradient(ellipse_at_center,_#2a2722_0%,_#171512_70%)] text-ink"
+>
+  <!-- Full-screen 3D canvas; the body slides aside while the panel is open -->
+  <app-muscle-viewer
+    class="absolute inset-0"
+    [panelOpen]="exercises.hasSelection()"
+    (muscleSelected)="onMuscleSelected($event)"
+  />
+
+  <!-- The exercises come from the API; without them the body can't be clicked -->
+  @if (exercises.loadState() === 'error') {
+    <div
+      class="absolute inset-x-4 bottom-6 z-20 mx-auto flex max-w-md animate-panel-in items-center gap-3 rounded-2xl border border-line-soft bg-surface px-4 py-3 text-sm shadow-2xl shadow-black/50"
+      role="alert"
+    >
+      <p class="flex-1 text-ink-soft">{{ t().loadFailed }}</p>
+      <button
+        type="button"
+        (click)="exercises.load()"
+        class="shrink-0 rounded-lg bg-accent px-3 py-1.5 font-semibold text-on-accent transition hover:bg-accent-bright"
+      >
+        {{ t().retry }}
+      </button>
+    </div>
+  }
+
+  <!-- App name: back to the start view (nothing selected, full body) -->
+  <h1 class="absolute top-5 left-6 z-10">
+    <a
+      href="/"
+      (click)="goHome($event)"
+      class="font-display text-xl font-semibold tracking-[-0.01em] text-ink uppercase transition hover:text-accent"
+      >Altsetter</a
+    >
+  </h1>
+
+  <!-- Burger menu: opens the side menu -->
+  <button
+    type="button"
+    (click)="exercises.menuOpen.set(true)"
+    class="absolute top-3.5 right-4 z-10 rounded-xl p-2 text-ink-soft transition hover:bg-paper-raised/80 hover:text-ink md:right-6"
+    [attr.aria-label]="t().menu.open"
+    [attr.aria-expanded]="exercises.menuOpen()"
+  >
+    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round" />
+    </svg>
+  </button>
+
+  <!--
+    Exercise panel. Phone: bottom sheet (CSS, draggable). Desktop: position comes from
+    layout/panel-layout.ts, which centres body + panel together; the viewer uses the same function
+    to move the body. It starts below the top bar so the menu button stays free.
+  -->
+  @if (exercises.hasSelection()) {
+    <app-exercise-panel
+      class="absolute inset-x-3 bottom-6 z-20 h-[55dvh] animate-panel-in overflow-hidden rounded-3xl border border-line-soft bg-surface shadow-2xl shadow-black/50 md:top-18 md:right-auto md:h-auto"
+      [style.left.px]="sidePanel()?.panelLeft ?? null"
+      [style.width.px]="sidePanel()?.panelWidth ?? null"
+    />
+  }
+
+  <!-- Side menu -->
+  @if (exercises.menuOpen()) {
+    <div
+      class="fixed inset-0 z-40 animate-fade-in bg-black/60"
+      (click)="exercises.menuOpen.set(false)"
+      aria-hidden="true"
+    ></div>
+    <aside
+      class="fixed inset-y-0 right-0 z-50 flex w-[min(340px,88vw)] animate-drawer-in flex-col border-l border-line-soft bg-surface shadow-2xl shadow-black/60"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="t().menu.label"
+    >
+      <div class="flex items-center justify-between px-6 pt-5 pb-4">
+        <span class="font-display text-lg font-semibold tracking-[-0.01em] text-ink uppercase"
+          >Altsetter</span
+        >
+        <button
+          type="button"
+          (click)="exercises.menuOpen.set(false)"
+          class="rounded-full p-2 text-ink-muted transition hover:bg-paper-raised hover:text-ink"
+          [attr.aria-label]="t().menu.close"
+        >
+          <svg
+            class="h-5 w-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+            <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+
+      <nav class="px-3">
+        @for (link of legalLinks(); track link.href) {
+          <a
+            [href]="link.href"
+            target="_blank"
+            rel="noopener"
+            class="flex items-center justify-between rounded-xl px-3 py-3 text-base font-medium text-ink transition hover:bg-paper-raised hover:text-ink"
+          >
+            {{ link.label }}
+            <svg
+              class="h-4 w-4 text-ink-faint"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path d="M7 17L17 7M9 7h8v8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </a>
+        }
+      </nav>
+
+      <!-- Language: texts change, paths stay the same -->
+      <div
+        class="mt-auto flex items-center gap-2 px-6 pb-3 font-display text-sm font-medium"
+        role="group"
+        [attr.aria-label]="t().menu.language"
+      >
+        @for (language of languages; track language.code; let first = $first) {
+          @if (!first) {
+            <span class="text-ink-faint" aria-hidden="true">|</span>
+          }
+          <button
+            type="button"
+            (click)="i18n.setLang(language.code)"
+            class="transition"
+            [class]="
+              i18n.lang() === language.code ? 'text-ink' : 'text-ink-faint hover:text-ink-soft'
+            "
+            [attr.aria-pressed]="i18n.lang() === language.code"
+            [attr.aria-label]="language.name"
+            [attr.lang]="language.code"
+          >
+            {{ language.label }}
+          </button>
+        }
+      </div>
+
+      <div
+        class="space-y-5 overflow-y-auto border-t border-line-soft px-6 py-5 text-xs leading-relaxed text-ink-faint"
+      >
+        <section>
+          <h2 class="label mb-1.5 text-ink-muted">{{ t().menu.noticeTitle }}</h2>
+          <p>{{ t().menu.notice }}</p>
+        </section>
+        <section>
+          <h2 class="label mb-1.5 text-ink-muted">{{ t().menu.sourcesTitle }}</h2>
+          <ul class="space-y-1.5">
+            <li>
+              {{ t().menu.model }}
+              <a
+                href="https://github.com/Z-Anatomy/The-blend"
+                target="_blank"
+                rel="noopener"
+                class="underline hover:text-ink-soft"
+                >Z-Anatomy</a
+              >
+              {{ t().menu.modelLicense }}
+              <a
+                [href]="t().menu.licenseUrl"
+                target="_blank"
+                rel="noopener"
+                class="underline hover:text-ink-soft"
+                >CC BY-SA 4.0</a
+              >.
+            </li>
+            <li>{{ t().menu.software }}</li>
+          </ul>
+        </section>
+      </div>
+    </aside>
+  }
+</main>

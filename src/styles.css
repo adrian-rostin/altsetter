@@ -1,0 +1,151 @@
+@import 'tailwindcss';
+
+/* Farben aus dem Portfolio (adrianrostin.de), Schema „Salbei“: warmes Fast-Schwarz, Creme, Salbeigrün
+   und Türkis als Akzent. Die Zwischentöne (surface, line-soft, ink-soft, ink-faint, accent-bright)
+   sind aus diesen Farben abgeleitet. */
+:root {
+  --pf-paper: #171512; /* dunkler Grund */
+  --pf-surface: #201e1a; /* Karte über dem Grund (Panel, Menü) */
+  --pf-paper-raised: #35342c; /* Chips, Hover-Flächen */
+  --pf-line: #52574a; /* Linien */
+  --pf-line-soft: #34352e; /* zurückhaltende Linien */
+  --pf-ink: #f1ebe2; /* Schrift (Creme) */
+  --pf-ink-soft: #d6cfc4; /* Fließtext */
+  --pf-ink-muted: #87a697; /* Nebentext (Salbei) */
+  --pf-ink-faint: #677d72; /* sehr leiser Text */
+  --pf-accent: #00b8a2; /* Akzent (Türkis) */
+  --pf-accent-bright: #3fd3bf; /* Akzent bei Hover und als Schrift auf dunklem Grund */
+  --pf-on-accent: #171512; /* Schrift auf Akzentflächen */
+}
+
+@theme inline {
+  /* Schriften wie im Portfolio: Space Grotesk für Überschriften und Namen, Inter für Text,
+     JetBrains Mono für kleine Beschriftungen. Alle selbst gehostet (Fontsource). */
+  --font-display: 'Space Grotesk', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+
+  --color-paper: var(--pf-paper);
+  --color-surface: var(--pf-surface);
+  --color-paper-raised: var(--pf-paper-raised);
+  --color-line: var(--pf-line);
+  --color-line-soft: var(--pf-line-soft);
+  --color-ink: var(--pf-ink);
+  --color-ink-soft: var(--pf-ink-soft);
+  --color-ink-muted: var(--pf-ink-muted);
+  --color-ink-faint: var(--pf-ink-faint);
+  --color-accent: var(--pf-accent);
+  --color-accent-bright: var(--pf-accent-bright);
+  --color-on-accent: var(--pf-on-accent);
+}
+
+@theme {
+  --animate-panel-in: panel-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-drawer-in: drawer-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-fade-in: fade-in 200ms ease-out;
+
+  @keyframes drawer-in {
+    from {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* Kleine Beschriftung in Großbuchstaben, wie .label im Portfolio. */
+@layer components {
+  .label {
+    @apply font-mono text-[12px] leading-[18px] font-medium tracking-[0.04em] uppercase;
+  }
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--pf-paper);
+  color-scheme: dark;
+}
+
+/* ───────────── Exercise card → detail page (View Transitions, see ExercisePanel.open) ───────────── */
+
+/* Everything inside the exercise card (cards, titles, heading) is nested in the card's group
+   (view-transition-group: contain on the panel) and clipped to its rounded edge, so items pushed
+   out of view slide under the card's border instead of over the page. */
+::view-transition-group-children(ex-panel) {
+  overflow: clip;
+  border-radius: 1.5rem;
+}
+
+/* Every shared element (card frame, title) moves and resizes with the same easing. */
+::view-transition-group(*) {
+  animation-duration: 460ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Card frame: stretch the old card and the new page to the growing frame; the old card's
+   content fades out quickly, leaving the frame that turns into the (lighter) page. */
+::view-transition-old(*.ex-card),
+::view-transition-new(*.ex-card) {
+  height: 100%;
+  object-fit: fill;
+}
+::view-transition-old(*.ex-card) {
+  animation: vt-fade-out 180ms ease-out both;
+}
+/* The page is opaque from the first frame, so the list never shows through while it grows. */
+::view-transition-new(*.ex-card) {
+  animation: none;
+}
+
+/* Parts that only exist on the detail page fade in once the card has grown, and out fast. */
+::view-transition-new(ex-body),
+::view-transition-new(ex-back) {
+  animation: vt-fade-up 300ms 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+::view-transition-old(ex-body),
+::view-transition-old(ex-back) {
+  animation: vt-fade-out 120ms ease-out both;
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* Tailwind v4 gives buttons the default arrow cursor; everything clickable gets the hand. */
+button:not(:disabled),
+[role='button'],
+a[href],
+select {
+  cursor: pointer;
+}
+
+/* Slim scrollbar for the sidebar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--pf-line) transparent;
+}

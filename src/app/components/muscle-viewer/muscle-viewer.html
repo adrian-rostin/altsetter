@@ -1,0 +1,40 @@
+<canvas
+  #canvas
+  class="block h-full w-full cursor-grab touch-none outline-none active:cursor-grabbing"
+></canvas>
+
+<!-- Loading overlay -->
+@if (loadState() === 'loading') {
+  <div class="pointer-events-none absolute inset-0 grid place-items-center">
+    <div class="flex flex-col items-center gap-3 text-ink-muted">
+      <div class="h-10 w-10 animate-spin rounded-full border-2 border-line border-t-accent"></div>
+      <span class="text-sm tracking-wide">{{ t().viewer.loading(loadProgress()) }}</span>
+    </div>
+  </div>
+}
+
+<!-- Hover label, follows the pointer -->
+@if (hoverLabel(); as label) {
+  <div
+    class="pointer-events-none absolute z-10 rounded-lg border border-line/70 bg-surface/90 px-3 py-1.5 shadow-lg backdrop-blur"
+    [style.left.px]="label.x + 16"
+    [style.top.px]="label.y + 16"
+  >
+    <p class="font-display text-[15px] font-medium text-ink">{{ label.title }}</p>
+    @if (label.detail) {
+      <p class="text-[11px] text-ink-muted">{{ label.detail }}</p>
+    }
+  </div>
+}
+
+<!-- Placeholder notice -->
+@if (loadState() === 'placeholder') {
+  <div
+    class="absolute top-24 left-5 max-w-xs rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-200/90 backdrop-blur"
+  >
+    <span class="font-semibold">{{ t().viewer.placeholderTitle }}</span>
+    {{ t().viewer.placeholderBefore }}
+    <code class="text-amber-100">public/{{ modelUrl() }}</code>
+    {{ t().viewer.placeholderAfter }}
+  </div>
+}

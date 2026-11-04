@@ -1,0 +1,365 @@
+<!-- Phones: grab handle to pull the sheet up to full screen (or down to close); tap toggles. -->
+@if (sheet.active()) {
+  <div
+    class="flex shrink-0 cursor-grab touch-none justify-center pt-2.5 pb-1.5 active:cursor-grabbing"
+    role="button"
+    tabindex="0"
+    [attr.aria-label]="sheet.full() ? t().panel.shrink : t().panel.expand"
+    (pointerdown)="sheet.onPointerDown($event)"
+    (pointermove)="sheet.onPointerMove($event)"
+    (pointerup)="sheet.onPointerUp()"
+    (pointercancel)="sheet.onPointerUp()"
+    (keydown.enter)="sheet.toggle()"
+  >
+    <span class="h-1.5 w-11 rounded-full bg-line"></span>
+  </div>
+}
+
+<!-- Close button stays in place while the content scrolls, also above an open exercise. -->
+<button
+  type="button"
+  (click)="exercises.clear()"
+  class="absolute top-4 right-4 z-30 rounded-full bg-surface/90 p-2 text-ink-muted transition hover:bg-paper-raised hover:text-ink md:top-6 md:right-6"
+  [attr.aria-label]="t().panel.close"
+>
+  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+  </svg>
+</button>
+
+<!--
+  List view — phone: this whole block scrolls (the heading scrolls away); desktop: the heading
+  stays put and only the exercise list scrolls.
+  Open exercise — everywhere: one scroll area. The detail page sits in the list where its card was,
+  scrolled to the top, so heading and earlier exercises are above it and later ones pushed below.
+-->
+<div
+  #scroller
+  class="min-h-0 flex-1 overflow-y-auto"
+  [class]="openExercise() ? '' : 'md:flex md:flex-col md:overflow-hidden'"
+>
+  @if (heading(); as h) {
+    <!-- Heading -->
+    <div
+      class="border-b border-line-soft/80 px-6 pt-6 pr-16 pb-5 md:px-8 md:pt-8 md:pr-20"
+      style="view-transition-name: ex-heading"
+      [class.hidden]="isolated()"
+    >
+      <!-- Always takes its line, so switching tabs (eyebrow appears/disappears) doesn't shift the card -->
+      <p
+        class="label mb-1 text-accent"
+        [class.invisible]="!h.eyebrow"
+        [attr.aria-hidden]="!h.eyebrow"
+      >
+        {{ h.eyebrow ?? '–' }}
+      </p>
+      <h2 class="font-display text-2xl font-medium tracking-[-0.02em] text-ink md:text-3xl">
+        {{ h.name }}
+      </h2>
+      @if (h.latinName !== h.name) {
+        <p class="mt-0.5 text-sm text-ink-faint italic">{{ h.latinName }}</p>
+      }
+      <p class="mt-3 text-sm leading-relaxed text-ink-muted md:text-base">{{ h.summary }}</p>
+
+      <!-- Whole family vs. one of its parts -->
+      @if (exercises.selectedFamily(); as family) {
+        <div
+          class="mt-4 inline-flex flex-wrap gap-1 rounded-xl border border-line-soft bg-paper/60 p-1"
+        >
+          <button
+            type="button"
+            (click)="exercises.selectFamily(family.id)"
+            class="rounded-lg px-3 py-1.5 text-sm font-medium transition"
+            [class]="tabClass(!exercises.selectedMuscle())"
+          >
+            {{ t().panel.all }}
+          </button>
+          @for (part of exercises.familyParts(); track part.id) {
+            <button
+              type="button"
+              (click)="exercises.selectMuscle(part.id)"
+              class="rounded-lg px-3 py-1.5 text-sm font-medium transition"
+              [class]="tabClass(exercises.selectedMuscle()?.id === part.id)"
+            >
+              {{ part.name }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    <div
+      #list
+      class="px-6 py-5 md:px-8 md:py-6"
+      [class]="
+        isolated() ? '!p-0' : openExercise() ? '' : 'md:min-h-0 md:flex-1 md:overflow-y-auto'
+      "
+    >
+      <!-- Exercises, one per row; grouped by part in the "All" view -->
+      <p
+        class="label mb-3 text-ink-faint"
+        style="view-transition-name: ex-count"
+        [class.hidden]="isolated()"
+      >
+        {{ t().panel.exerciseCount(exerciseCount()) }}
+      </p>
+      @for (section of sections(); track $index; let si = $index) {
+        @if (section.secondary) {
+          <div
+            class="mt-8 mb-3 border-t border-line-soft pt-5"
+            [style.view-transition-name]="'ex-sec-' + si"
+            [class.hidden]="isolated()"
+          >
+            <h3 class="font-display text-base font-medium text-ink-soft">{{ section.title }}</h3>
+            <p class="mt-0.5 text-xs text-ink-faint">{{ t().panel.secondaryHint }}</p>
+          </div>
+        } @else if (section.title) {
+          <h3
+            class="mt-6 mb-3 w-fit font-display text-base font-medium text-ink first-of-type:mt-2"
+            [style.view-transition-name]="'ex-sec-' + si"
+            [class.hidden]="isolated()"
+          >
+            {{ section.title }}
+          </h3>
+        }
+        <ul class="space-y-3">
+          @for (item of section.exercises; track item.exercise.id) {
+            @let isOpenItem = openExercise()?.exercise?.id === item.exercise.id;
+            <li [class.hidden]="isolated() && !isOpenItem" [class.!m-0]="isolated() && isOpenItem">
+              @if (isOpenItem) {
+                <ng-container *ngTemplateOutlet="exerciseDetail" />
+              } @else {
+                <ng-container
+                  *ngTemplateOutlet="
+                    exerciseCard;
+                    context: { $implicit: item.exercise, number: item.number }
+                  "
+                />
+              }
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  } @else if (exercises.unknownMeshName(); as meshName) {
+    <!-- Clicked a mesh that has no data yet -->
+    <div class="p-6 pr-16">
+      <p class="text-sm text-ink-soft">
+        {{ t().panel.noExercisesFor }}
+        <span class="font-semibold text-ink">{{ meshLabel(meshName) }}</span
+        >.
+      </p>
+    </div>
+  }
+</div>
+
+<!--
+  Exercise card in the list. Frame and title share view-transition names with the detail
+  page, so opening morphs the card into the page (see open() and styles.css).
+-->
+<ng-template #exerciseCard let-ex let-number="number">
+  <button
+    type="button"
+    (click)="open(ex.id)"
+    (pointerenter)="prefetch(ex.id)"
+    (focus)="prefetch(ex.id)"
+    class="group flex w-full items-start gap-3 rounded-2xl border border-line-soft bg-paper/60 p-4 text-left transition hover:border-ink-muted hover:bg-paper md:p-5"
+    style="view-transition-class: ex-card"
+    [style.view-transition-name]="vtName('card', ex.id)"
+  >
+    <span class="mt-0.5 font-mono text-xs text-ink-faint group-hover:text-accent">
+      {{ number.toString().padStart(2, '0') }}
+    </span>
+    <div class="min-w-0 flex-1">
+      <h4
+        class="w-fit font-display text-[17px] font-medium tracking-[-0.01em] text-ink"
+        [style.view-transition-name]="vtName('title', ex.id)"
+      >
+        {{ ex.name }}
+      </h4>
+      <div class="mt-1.5 flex flex-wrap gap-1.5">
+        <span class="rounded border border-line px-1.5 py-0.5 text-[11px] text-ink-muted">{{
+          equipmentLabel(ex.equipment)
+        }}</span>
+        <span
+          class="rounded border px-1.5 py-0.5 text-[11px]"
+          [class]="difficultyClass(ex.difficulty)"
+        >
+          {{ difficultyLabel(ex.difficulty) }}
+        </span>
+      </div>
+      <p class="mt-2.5 text-sm leading-relaxed text-ink-muted">{{ ex.description }}</p>
+    </div>
+    <svg
+      class="mt-0.5 h-5 w-5 shrink-0 self-center text-ink-faint transition group-hover:translate-x-0.5 group-hover:text-accent"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+    >
+      <path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  </button>
+</ng-template>
+
+<!--
+  Exercise detail page: takes its card's place in the list, edge to edge and at least as tall as
+  the whole card, and is scrolled to the top when opened.
+-->
+<ng-template #exerciseDetail>
+  @if (openExercise(); as open) {
+    <div
+      data-exercise-detail
+      class="relative rounded-3xl bg-surface"
+      [class]="isolated() ? '' : '-mx-6 md:-mx-8'"
+      style="view-transition-class: ex-card"
+      [style.view-transition-name]="vtName('card', open.exercise.id)"
+      [style.min-height.px]="detailHeight()"
+    >
+      <button
+        type="button"
+        (click)="closeDetail()"
+        class="absolute top-4 left-4 z-10 rounded-full bg-surface/90 p-2 text-ink-muted transition hover:bg-paper-raised hover:text-ink md:top-6 md:left-6"
+        style="view-transition-name: ex-back"
+        [attr.aria-label]="t().panel.back"
+      >
+        <svg
+          class="h-5 w-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+        >
+          <path d="M19 12H5M11 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+
+      <div class="px-6 pt-4 pb-8 md:px-8 md:pt-6">
+        <!-- Title sits between the back and the close button -->
+        <h3
+          class="mx-12 w-fit pt-1.5 font-display text-xl leading-tight font-medium tracking-[-0.02em] text-ink md:text-2xl"
+          [style.view-transition-name]="vtName('title', open.exercise.id)"
+        >
+          {{ open.exercise.name }}
+        </h3>
+
+        <!-- Everything below fades in once the card has grown -->
+        <div style="view-transition-name: ex-body">
+          <div class="mt-5 flex flex-wrap gap-1.5">
+            <span class="rounded border border-line px-1.5 py-0.5 text-xs text-ink-muted">{{
+              equipmentLabel(open.exercise.equipment)
+            }}</span>
+            <span
+              class="rounded border px-1.5 py-0.5 text-xs"
+              [class]="difficultyClass(open.exercise.difficulty)"
+            >
+              {{ difficultyLabel(open.exercise.difficulty) }}
+            </span>
+          </div>
+
+          <!-- Trained muscles: focus bright (like on the body), working along softer. Click to switch. -->
+          <div class="mt-4 space-y-2">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="label mr-1 w-32 shrink-0 whitespace-nowrap text-ink-faint">{{
+                t().panel.focus
+              }}</span>
+              @for (m of open.focus; track m.id) {
+                <button
+                  type="button"
+                  (click)="showMuscle(m.id)"
+                  class="rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-on-accent transition hover:bg-accent-bright"
+                >
+                  {{ m.name }}
+                </button>
+              }
+            </div>
+            @if (open.also.length) {
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="label mr-1 w-32 shrink-0 whitespace-nowrap text-ink-faint">{{
+                  t().panel.alsoTrainsLabel
+                }}</span>
+                @for (m of open.also; track m.id) {
+                  <button
+                    type="button"
+                    (click)="showMuscle(m.id)"
+                    class="rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent transition hover:border-accent-bright hover:text-ink"
+                  >
+                    {{ m.name }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+
+          <p class="mt-6 text-sm leading-relaxed text-ink-soft md:text-base">
+            {{ open.exercise.description }}
+          </p>
+
+          @if (open.detail; as d) {
+            <div class="mt-6 grid gap-4">
+              <section class="rounded-2xl border border-accent/20 bg-accent/5 p-4 md:p-5">
+                <h4 class="font-display text-base font-medium text-accent-bright">
+                  {{ t().panel.cues }}
+                </h4>
+                <ul class="mt-3 space-y-2.5">
+                  @for (cue of d.cues; track $index) {
+                    <li class="flex gap-2.5 text-sm leading-relaxed text-ink-soft">
+                      <svg
+                        class="mt-0.5 h-4 w-4 shrink-0 text-accent"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                      >
+                        <path
+                          d="M5 12.5l4.5 4.5L19 7.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                      {{ cue }}
+                    </li>
+                  }
+                </ul>
+              </section>
+              <section class="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 md:p-5">
+                <h4 class="font-display text-base font-medium text-rose-300">
+                  {{ t().panel.mistakes }}
+                </h4>
+                <ul class="mt-3 space-y-2.5">
+                  @for (mistake of d.mistakes; track $index) {
+                    <li class="flex gap-2.5 text-sm leading-relaxed text-ink-soft">
+                      <svg
+                        class="mt-0.5 h-4 w-4 shrink-0 text-rose-400"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                      >
+                        <path d="M7 7l10 10M17 7L7 17" stroke-linecap="round" />
+                      </svg>
+                      {{ mistake }}
+                    </li>
+                  }
+                </ul>
+              </section>
+            </div>
+          } @else if (open.detailFailed) {
+            <p class="mt-6 text-sm text-ink-faint">
+              {{ t().panel.detailFailed }}
+              <button
+                type="button"
+                (click)="retryDetail(open.exercise.id)"
+                class="ml-1 text-accent underline hover:text-accent-bright"
+              >
+                {{ t().retry }}
+              </button>
+            </p>
+          } @else {
+            <p class="mt-6 animate-pulse text-sm text-ink-faint">{{ t().panel.detailLoading }}</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</ng-template>

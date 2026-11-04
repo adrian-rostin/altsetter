@@ -1,0 +1,15 @@
+.angular
+.claude
+.git
+.github
+.vscode
+dist
+k8s
+node_modules
+tools
+coverage
+*.log
+README.md
+Dockerfile
+.dockerignore
+docs

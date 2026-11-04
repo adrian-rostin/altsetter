@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: altsetter
+  namespace: altsetter
+  labels:
+    app.kubernetes.io/name: altsetter
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - altsetter.adrianrostin.de
+      secretName: altsetter-tls
+  rules:
+    - host: altsetter.adrianrostin.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: altsetter
+                port:
+                  name: http
