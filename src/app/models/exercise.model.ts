@@ -49,6 +49,17 @@ export interface MuscleRef {
   name: string;
 }
 
+/**
+ * A photo of an exercise. `url` is on the app's own origin and carries a version, so the browser
+ * may keep it for good.
+ */
+export interface ExerciseImage {
+  position: 'start' | 'end';
+  url: string;
+  width: number;
+  height: number;
+}
+
 /** An exercise in lists: enough to show its card and highlight its muscles. */
 export interface ExerciseSummary {
   id: string;
@@ -58,6 +69,8 @@ export interface ExerciseSummary {
   equipment: Equipment[];
   primaryMuscles: string[];
   secondaryMuscles: string[];
+  /** Start before end; holds like the plank only have a start photo. */
+  images: ExerciseImage[];
 }
 
 /** Everything about one exercise, for its detail page. */
@@ -72,6 +85,7 @@ export interface ExerciseDetail {
   cues: string[];
   /** "Common mistakes" */
   mistakes: string[];
+  images: ExerciseImage[];
 }
 
 /** A complete list; every list of the API wraps its entries in `items`. */

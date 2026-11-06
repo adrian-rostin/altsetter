@@ -16,7 +16,12 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { I18n } from '../../i18n/i18n';
-import { type Difficulty, type ExerciseSummary, type Muscle } from '../../models/exercise.model';
+import {
+  type Difficulty,
+  type ExerciseImage,
+  type ExerciseSummary,
+  type Muscle,
+} from '../../models/exercise.model';
 import { ExerciseService } from '../../services/exercise.service';
 import { difficultyClass, equipmentLabel, meshLabel } from '../../shared/exercise-format';
 import { runViewTransition } from '../../shared/view-transition';
@@ -206,6 +211,8 @@ export class ExercisePanel {
   /** The exercise being opened from its card; its page appears through the transition instead. */
   private openingByClick: string | null = null;
   private readonly injector = inject(Injector);
+  /** End photos already requested by prefetch(). */
+  private readonly preloaded = new Set<string>();
 
   constructor() {
     this.sheet = new BottomSheet(this.host.nativeElement, () => {
@@ -358,13 +365,26 @@ export class ExercisePanel {
   }
 
   /** view-transition-name shared by a list card and the detail page, e.g. "ex-title-lat-pulldown". */
-  protected vtName(part: 'card' | 'title', exerciseId: string): string {
+  protected vtName(part: 'card' | 'title' | 'photo', exerciseId: string): string {
     return `ex-${part}-${exerciseId}`;
   }
 
-  /** Loads the details while the pointer is on a card, so opening it needs no waiting. */
+  protected photo(exercise: ExerciseSummary, position: ExerciseImage['position']) {
+    return exercise.images.find((image) => image.position === position) ?? null;
+  }
+
+  /**
+   * Loads the details while the pointer is on a card, so opening it needs no waiting; the end photo
+   * too, so the detail page can switch to it right away.
+   */
   protected prefetch(exerciseId: string): void {
     this.exercises.loadDetail(exerciseId).catch(() => undefined);
+    const exercise = this.exercises.allExercises().find((e) => e.id === exerciseId);
+    const end = exercise && this.photo(exercise, 'end');
+    if (end && !this.preloaded.has(end.url)) {
+      this.preloaded.add(end.url);
+      new Image().src = end.url;
+    }
   }
 
   protected retryDetail(exerciseId: string): void {

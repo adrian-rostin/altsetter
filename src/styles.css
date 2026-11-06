@@ -16,6 +16,7 @@
   --pf-accent: #00b8a2; /* Akzent (Türkis) */
   --pf-accent-bright: #3fd3bf; /* Akzent bei Hover und als Schrift auf dunklem Grund */
   --pf-on-accent: #171512; /* Schrift auf Akzentflächen */
+  --pf-photo: #1a1a1d; /* Studiohintergrund der Übungsfotos, solange sie laden */
 }
 
 @theme inline {
@@ -37,6 +38,7 @@
   --color-accent: var(--pf-accent);
   --color-accent-bright: var(--pf-accent-bright);
   --color-on-accent: var(--pf-on-accent);
+  --color-photo: var(--pf-photo);
 }
 
 @theme {
@@ -127,6 +129,47 @@ body {
 @keyframes vt-fade-out {
   to {
     opacity: 0;
+  }
+}
+
+/* ───────────── Übungsfotos ───────────── */
+
+/* Kennzeichnung „KI-generiert“ unten rechts im Foto: weiß und kursiv, mit leichtem Schatten, damit
+   sie auch auf hellen Stellen lesbar bleibt. */
+.ai-label {
+  pointer-events: none;
+  color: rgb(255 255 255 / 0.9);
+  font-style: italic;
+  line-height: 1.2;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+}
+
+/* Detailseite: */
+
+/* Das Endbild liegt über dem Startbild und blendet ein und wieder aus: Start halten, Ende halten,
+   wie ein langsames GIF. Beginnt erst, wenn die Karte aufgegangen ist. */
+.ex-photo-end {
+  opacity: 0;
+  animation: ex-photo-swap 3.6s ease-in-out 0.5s infinite;
+}
+@keyframes ex-photo-swap {
+  0%,
+  30% {
+    opacity: 0;
+  }
+  45%,
+  80% {
+    opacity: 1;
+  }
+  95%,
+  100% {
+    opacity: 0;
+  }
+}
+/* Ohne Bewegung: hart wechseln statt überblenden. */
+@media (prefers-reduced-motion: reduce) {
+  .ex-photo-end {
+    animation-timing-function: step-end;
   }
 }
 @keyframes vt-fade-up {

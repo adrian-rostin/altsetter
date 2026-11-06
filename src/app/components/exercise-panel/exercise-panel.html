@@ -222,15 +222,39 @@
       </div>
       <p class="mt-2.5 text-sm leading-relaxed text-ink-muted">{{ ex.description }}</p>
     </div>
-    <svg
-      class="mt-0.5 h-5 w-5 shrink-0 self-center text-ink-faint transition group-hover:translate-x-0.5 group-hover:text-accent"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2.5"
-    >
-      <path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
-    </svg>
+    @if (photo(ex, 'start'); as start) {
+      <!--
+        Start photo right of the text; grows into the detail page's photo when the card opens.
+        Marked as AI-generated in its corner, as every photo must be.
+      -->
+      <figure
+        class="relative w-24 shrink-0 self-center overflow-hidden rounded-xl bg-photo md:w-32"
+        [style.view-transition-name]="vtName('photo', ex.id)"
+      >
+        <img
+          [src]="start.url"
+          [width]="start.width"
+          [height]="start.height"
+          alt=""
+          loading="lazy"
+          decoding="async"
+          class="block aspect-[3/2] h-auto w-full object-cover transition duration-300 group-hover:scale-[1.04]"
+        />
+        <figcaption class="ai-label absolute right-1.5 bottom-1 text-[9px] md:text-[10px]">
+          {{ t().panel.aiGenerated }}
+        </figcaption>
+      </figure>
+    } @else {
+      <svg
+        class="mt-0.5 h-5 w-5 shrink-0 self-center text-ink-faint transition group-hover:translate-x-0.5 group-hover:text-accent"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+      >
+        <path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    }
   </button>
 </ng-template>
 
@@ -275,6 +299,40 @@
         >
           {{ open.exercise.name }}
         </h3>
+
+        <!--
+          Start photo, then the end photo fades in and out again, like a slow GIF (.ex-photo-end in
+          styles.css). Holds like the plank only have the start photo.
+        -->
+        @if (photo(open.exercise, 'start'); as start) {
+          @let end = photo(open.exercise, 'end');
+          <div
+            class="relative mt-5 overflow-hidden rounded-2xl bg-photo"
+            [style.view-transition-name]="vtName('photo', open.exercise.id)"
+          >
+            <img
+              [src]="start.url"
+              [width]="start.width"
+              [height]="start.height"
+              [alt]="t().panel.photo(open.exercise.name, !!end)"
+              decoding="async"
+              class="block aspect-[3/2] h-auto w-full object-cover"
+            />
+            @if (end) {
+              <img
+                [src]="end.url"
+                [width]="end.width"
+                [height]="end.height"
+                alt=""
+                decoding="async"
+                class="ex-photo-end absolute inset-0 h-full w-full object-cover"
+              />
+            }
+            <span class="ai-label absolute right-3 bottom-2 text-xs">
+              {{ t().panel.aiGenerated }}
+            </span>
+          </div>
+        }
 
         <!-- Everything below fades in once the card has grown -->
         <div style="view-transition-name: ex-body">

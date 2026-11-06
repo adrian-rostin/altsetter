@@ -28,6 +28,7 @@ const de = {
       '(CC BY-SA 4.0), basierend auf BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 JP). Für Altsetter bearbeitet; das bearbeitete Modell steht ebenfalls unter',
     licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/deed.de',
     software: 'Software: Angular, Three.js, three-mesh-bvh, Tailwind CSS (MIT-Lizenz).',
+    photos: 'Übungsfotos: mit KI erstellt (ChatGPT).',
   },
 
   panel: {
@@ -46,6 +47,10 @@ const de = {
     mistakes: 'Häufige Fehler',
     detailFailed: 'Hinweise zur Ausführung konnten gerade nicht geladen werden.',
     detailLoading: 'Hinweise werden geladen …',
+    photo: (name: string, moving: boolean) =>
+      moving ? `${name}: Start- und Endposition im Wechsel` : `${name}: Ausführung`,
+    /** Label under every photo; AI images must be marked as such. */
+    aiGenerated: 'KI-generiert',
   },
 
   difficulty: {
@@ -87,6 +92,7 @@ const en: Messages = {
       '(CC BY-SA 4.0), based on BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 JP). Modified for Altsetter; the modified model is also licensed under',
     licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/deed.en',
     software: 'Software: Angular, Three.js, three-mesh-bvh, Tailwind CSS (MIT licence).',
+    photos: 'Exercise photos: AI-generated (ChatGPT).',
   },
 
   panel: {
@@ -105,6 +111,9 @@ const en: Messages = {
     mistakes: 'Common mistakes',
     detailFailed: "The form tips couldn't be loaded right now.",
     detailLoading: 'Loading tips …',
+    photo: (name: string, moving: boolean) =>
+      moving ? `${name}: start and end position, alternating` : `${name}: how it's done`,
+    aiGenerated: 'AI-generated',
   },
 
   difficulty: {
