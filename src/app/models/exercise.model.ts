@@ -69,8 +69,11 @@ export interface ExerciseSummary {
   equipment: Equipment[];
   primaryMuscles: string[];
   secondaryMuscles: string[];
-  /** Start before end; holds like the plank only have a start photo. */
-  images: ExerciseImage[];
+  /**
+   * Start before end; holds like the plank only have a start photo. Missing from APIs older than
+   * the photos, so the app keeps working (without photos) if it is deployed first.
+   */
+  images?: ExerciseImage[];
 }
 
 /** Everything about one exercise, for its detail page. */
@@ -85,7 +88,7 @@ export interface ExerciseDetail {
   cues: string[];
   /** "Common mistakes" */
   mistakes: string[];
-  images: ExerciseImage[];
+  images?: ExerciseImage[];
 }
 
 /** A complete list; every list of the API wraps its entries in `items`. */

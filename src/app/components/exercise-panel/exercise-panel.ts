@@ -370,7 +370,7 @@ export class ExercisePanel {
   }
 
   protected photo(exercise: ExerciseSummary, position: ExerciseImage['position']) {
-    return exercise.images.find((image) => image.position === position) ?? null;
+    return exercise.images?.find((image) => image.position === position) ?? null;
   }
 
   /**
