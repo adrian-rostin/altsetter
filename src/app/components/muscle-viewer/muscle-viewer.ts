@@ -104,12 +104,8 @@ export class MuscleViewer {
   protected readonly loadState = signal<LoadState>('loading');
   protected readonly t = inject(I18n).t;
   protected readonly loadProgress = signal(0);
-  protected readonly hoverLabel = signal<{
-    title: string;
-    detail: string;
-    x: number;
-    y: number;
-  } | null>(null);
+  /** The muscle name under the pointer. */
+  protected readonly hoverLabel = signal<{ title: string; x: number; y: number } | null>(null);
 
   private readonly canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -159,11 +155,11 @@ export class MuscleViewer {
       if (this.loadState() !== 'loading') this.applyHighlight();
     });
 
-    // The muscle catalog comes from the API, before or after the model: link keys and the
-    // precomputed view directions depend on it, so they are rebuilt once both are there.
+    // Link keys and the precomputed view directions depend on the muscle catalog (its texts change
+    // with the language), so they are rebuilt once the model is there and on every switch.
     effect(() => {
       this.exercises.muscles();
-      const ready = this.loadState() === 'loaded' && this.exercises.loadState() === 'ready';
+      const ready = this.loadState() === 'loaded';
       untracked(() => {
         this.linkKeys = new WeakMap();
         this.viewDirections.clear();
@@ -607,12 +603,8 @@ export class MuscleViewer {
     });
   }
 
-  /**
-   * Raycast from the pointer and return the front-most mesh, if it is a muscle. Nothing is
-   * pickable until the muscle catalog has arrived from the API.
-   */
+  /** Raycast from the pointer and return the front-most mesh, if it is a muscle. */
   private pick(e: PointerEvent): THREE.Mesh | null {
-    if (this.exercises.loadState() !== 'ready') return null;
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.set(
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -643,7 +635,6 @@ export class MuscleViewer {
       const target = insideOpenFamily ? group : (this.exercises.familyFor(group) ?? group);
       this.hoverLabel.set({
         title: target?.name ?? meshLabel(name),
-        detail: target && target.latinName !== target.name ? target.latinName : '',
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
       });

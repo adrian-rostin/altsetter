@@ -8,23 +8,6 @@
     (muscleSelected)="onMuscleSelected($event)"
   />
 
-  <!-- The exercises come from the API; without them the body can't be clicked -->
-  @if (exercises.loadState() === 'error') {
-    <div
-      class="absolute inset-x-4 bottom-6 z-20 mx-auto flex max-w-md animate-panel-in items-center gap-3 rounded-2xl bg-surface px-4 py-3 text-sm shadow-2xl shadow-black/50"
-      role="alert"
-    >
-      <p class="flex-1 text-ink-soft">{{ t().loadFailed }}</p>
-      <button
-        type="button"
-        (click)="exercises.load()"
-        class="shrink-0 rounded-lg bg-accent px-3 py-1.5 font-semibold text-on-accent transition hover:bg-accent-bright"
-      >
-        {{ t().retry }}
-      </button>
-    </div>
-  }
-
   <!-- App name: back to the start view (nothing selected, full body) -->
   <h1 class="absolute top-5 left-6 z-10">
     <a

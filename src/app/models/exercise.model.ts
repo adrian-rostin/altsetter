@@ -1,5 +1,6 @@
 /**
- * Data as delivered by the Altsetter API (/api/v1). Ids are English, lowercase and hyphenated and
+ * Data of the app. Muscles and families are fixed and live in the app (data/muscles.ts);
+ * exercises come from the Altsetter API (/api/v1). Ids are English, lowercase and hyphenated and
  * the same in every language, e.g. 'upper-chest' for a muscle or 'lat-pulldown' for an exercise;
  * the app's paths use them too. Texts come in the language the app asks for.
  */
@@ -13,11 +14,7 @@ export interface Muscle {
   familyId: string | null;
   /** Everyday name, e.g. "Upper Chest". */
   name: string;
-  /** Anatomical name, e.g. "Pectoralis major – Pars clavicularis". */
-  latinName: string;
   region: string;
-  /** Short anatomical description shown above the exercise list. */
-  summary: string;
   /**
    * Model mesh names without the "left"/"right" suffix (e.g. "Long head of biceps brachii").
    * Matching is case-insensitive and ignores "_".
@@ -32,11 +29,15 @@ export interface Muscle {
 export interface MuscleFamily {
   id: string;
   name: string;
-  latinName: string;
   region: string;
-  summary: string;
   /** Its parts, from top to bottom. */
   muscleIds: string[];
+}
+
+/** All muscles and families in one language. */
+export interface MuscleCatalog {
+  families: MuscleFamily[];
+  muscles: Muscle[];
 }
 
 export interface Equipment {

@@ -53,9 +53,13 @@ flowchart LR
     API --> DB[("PostgreSQL")]
 ```
 
-Diese App ist das, was man im Browser sieht. Muskeln und Übungen kommen aus der
+Diese App ist das, was man im Browser sieht. Die Übungen kommen aus der
 [Altsetter API](https://github.com/adrian-rostin/altsetter-api), die sie aus einer eigenen
 Datenbank liest. Beide laufen unter derselben Adresse: alles unter `/api` geht an die API.
+
+Die Muskeln ändern sich nicht und stehen fest in der App (`src/app/data/muscles.ts`). Ist die API
+nicht erreichbar, lässt sich der Körper deshalb weiter anklicken; nur die Übungen fehlen, bis
+„Erneut versuchen“ klappt.
 
 ## Selbst starten
 

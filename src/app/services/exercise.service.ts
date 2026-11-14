@@ -6,7 +6,8 @@ import {
   type Muscle,
   type MuscleFamily,
 } from '../models/exercise.model';
-import { AltsetterApi, type Catalog } from './altsetter-api';
+import { MUSCLES } from '../data/muscles';
+import { AltsetterApi } from './altsetter-api';
 
 /**
  * What is selected:
@@ -44,22 +45,21 @@ export interface ExerciseList {
 export type LoadState = 'loading' | 'ready' | 'error';
 
 /**
- * Selection state of the app plus the catalog from the API: muscles, families and all exercises
- * are loaded once at start; exercise details are loaded when an exercise is opened.
+ * Selection state of the app plus its data: muscles and families are fixed and live in the app
+ * (data/muscles.ts), so the body is clickable right away, even when the API is down. All exercises
+ * come from the API once at start; exercise details when an exercise is opened.
  *
- * Switching the language reloads the catalog in that language. Ids are the same in every
+ * Switching the language reloads the exercises in that language. Ids are the same in every
  * language, so the selection (and the URL) stays; the old texts remain until the new ones arrive.
  */
 @Injectable({ providedIn: 'root' })
 export class ExerciseService {
-  /** Whether the catalog has been loaded from the API. */
-  readonly loadState = signal<LoadState>('loading');
+  /** Whether the exercise list has been loaded from the API. */
+  readonly exerciseState = signal<LoadState>('loading');
 
-  readonly muscles = computed<readonly Muscle[]>(() => this.catalog()?.muscles ?? []);
-  readonly families = computed<readonly MuscleFamily[]>(() => this.catalog()?.families ?? []);
-  readonly allExercises = computed<readonly ExerciseSummary[]>(
-    () => this.catalog()?.exercises ?? [],
-  );
+  readonly muscles = computed<readonly Muscle[]>(() => MUSCLES[this.i18n.lang()].muscles);
+  readonly families = computed<readonly MuscleFamily[]>(() => MUSCLES[this.i18n.lang()].families);
+  readonly allExercises = computed<readonly ExerciseSummary[]>(() => this.exerciseList() ?? []);
 
   /**
    * True while the exercise card ↔ detail transition runs. The 3D view pauses rendering (and
@@ -168,7 +168,7 @@ export class ExerciseService {
 
   private readonly api = inject(AltsetterApi);
   private readonly i18n = inject(I18n);
-  private readonly catalog = signal<Catalog | null>(null);
+  private readonly exerciseList = signal<readonly ExerciseSummary[] | null>(null);
   private readonly selection = signal<SelectionState | null>(null);
   /** Loaded exercise details by id, in the current language. */
   private readonly details = signal<ReadonlyMap<string, ExerciseDetail>>(new Map());
@@ -201,21 +201,22 @@ export class ExerciseService {
   }
 
   /**
-   * Loads the catalog in the current language; called at start, on a language switch and from
-   * the retry button. "loading" is only shown while there is nothing to show yet.
+   * Loads the exercises in the current language; called at start, on a language switch and from
+   * the retry button. "loading" is only shown while there is nothing to show yet; after a language
+   * switch the exercises of the previous language stay if the new ones can't be loaded.
    */
   async load(): Promise<void> {
     const lang = this.i18n.lang();
-    if (!this.catalog()) this.loadState.set('loading');
+    if (!this.exerciseList()) this.exerciseState.set('loading');
     try {
-      const catalog = await this.api.catalog(lang);
+      const exercises = await this.api.exercises(lang);
       if (lang !== this.i18n.lang()) return; // switched again meanwhile
-      this.catalog.set(catalog);
-      this.loadState.set('ready');
+      this.exerciseList.set(exercises);
+      this.exerciseState.set('ready');
     } catch (error: unknown) {
       if (lang !== this.i18n.lang()) return;
-      console.error('[ExerciseService] Could not load the catalog.', error);
-      this.loadState.set('error');
+      console.error('[ExerciseService] Could not load the exercises.', error);
+      if (!this.exerciseList()) this.exerciseState.set('error');
     }
   }
 
@@ -285,7 +286,8 @@ export class ExerciseService {
 
   /**
    * Restores a selection in one step, e.g. from the URL: `subjectId` is a family or a muscle,
-   * `exerciseId` optionally an exercise open in its card. Returns false for unknown ids.
+   * `exerciseId` optionally an exercise open in its card. Returns false for unknown ids. Without
+   * exercises (API down) only the muscle is selected.
    */
   restore(subjectId: string | null, exerciseId: string | null = null): boolean {
     if (subjectId === null) {
@@ -295,6 +297,7 @@ export class ExerciseService {
     const family = this.families().find((f) => f.id === subjectId);
     const muscle = family ? null : this.muscleById(subjectId);
     if (!family && !muscle) return false;
+    if (this.exerciseState() !== 'ready') exerciseId = null;
     if (exerciseId !== null && !this.exerciseIndex().has(exerciseId)) return false;
     this.selection.set({
       familyId: family?.id ?? muscle?.familyId ?? null,

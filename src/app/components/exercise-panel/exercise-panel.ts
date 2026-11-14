@@ -44,14 +44,14 @@ interface TabBox {
   height: number;
 }
 
-/** Top padding of the desktop list (md:py-6) and the fade at its top edge without tabs (px). */
-const LIST_PADDING_TOP = 24;
-const FADE = 20;
-/** Where the tab selection sticks on phones, level with the close button (max-md:top-4). */
-const STICKY_TOP = 16;
+/** Large screens: where the tab selection sticks while the card scrolls (md:top-6). */
+const STICKY_TOP = 24;
 
-/** Longest wait for the details before opening an exercise anyway. */
-const PREPARE_TIMEOUT_MS = 1500;
+/**
+ * Longest wait for the details and the photo before opening an exercise anyway. Short, so a tap
+ * reacts right away; usually the hover (or the touch itself) has already loaded them.
+ */
+const PREPARE_TIMEOUT_MS = 300;
 
 /**
  * The card with the selected muscle (or muscle family), its exercises and the exercise detail page.
@@ -85,7 +85,7 @@ export class ExercisePanel {
     const family = this.exercises.selectedFamily();
     const subject = muscle ?? family;
     if (!subject) return null;
-    return { name: subject.name, latinName: subject.latinName, summary: subject.summary };
+    return { name: subject.name };
   });
 
   /** Family tabs: 0 is "All", then one per part. */
@@ -154,21 +154,6 @@ export class ExercisePanel {
     };
   });
 
-  /**
-   * Desktop list: the list scrolls up behind the tab selection and fades out there, so the
-   * exercises show through the glass instead of ending at a hard line. Without tabs it just fades
-   * at the top edge.
-   */
-  protected readonly listUnderHeading = computed(() => {
-    if (this.sheet.active() || this.openExercise()) return null;
-    const { overlap, height } = this.pillArea();
-    return {
-      marginTop: -overlap,
-      paddingTop: overlap + LIST_PADDING_TOP,
-      mask: `linear-gradient(to bottom, transparent, black ${height || FADE}px)`,
-    };
-  });
-
   /** Minimum height of the detail page: the full card, so it fills the card when at the top. */
   protected readonly detailHeight = signal(0);
 
@@ -194,11 +179,6 @@ export class ExercisePanel {
   private readonly tabBoxes = signal<TabBox[]>([]);
   private readonly tabBlock = viewChild<ElementRef<HTMLElement>>('tabBlock');
   private readonly headingText = viewChild<ElementRef<HTMLElement>>('headingText');
-  /** Phones: whether the tab selection sticks at the top right now (see trackStuck). */
-  private tabsStuck = false;
-  private readonly tabPill = viewChild<ElementRef<HTMLElement>>('tabPill');
-  /** From the top of the tab selection to the end of its block, and its height (px). */
-  private readonly pillArea = signal({ overlap: 0, height: 0 });
 
   /** What the card shows: a family, a single muscle or an unknown mesh, and the selected part. */
   private readonly subjectKey = computed(
@@ -211,6 +191,12 @@ export class ExercisePanel {
   /** The exercise being opened from its card; its page appears through the transition instead. */
   private openingByClick: string | null = null;
   private readonly injector = inject(Injector);
+  /**
+   * Cards that take part in the open/close animation: those in view when opening (closing brings
+   * the same ones back). Every named element is captured and animated on its own, and the "All"
+   * list can hold over 50 cards with three names each; cards out of view don't need to move.
+   */
+  private readonly animatedCards = signal<ReadonlySet<string>>(new Set());
   /** End photos already requested by prefetch(). */
   private readonly preloaded = new Set<string>();
 
@@ -222,16 +208,6 @@ export class ExercisePanel {
     // Measure the tabs whenever one changes size (other family, language, line break), so the lens
     // knows where to go.
     const tabObserver = new ResizeObserver(() => {
-      const block = this.tabBlock()?.nativeElement;
-      const pill = this.tabPill()?.nativeElement;
-      this.pillArea.set(
-        block && pill
-          ? {
-              overlap: block.getBoundingClientRect().bottom - pill.getBoundingClientRect().top,
-              height: pill.offsetHeight,
-            }
-          : { overlap: 0, height: 0 },
-      );
       this.tabBoxes.set(
         this.tabs().map(({ nativeElement: tab }) => ({
           left: tab.offsetLeft,
@@ -273,8 +249,9 @@ export class ExercisePanel {
       });
     });
 
-    // A different muscle starts at the top of the card. Switching between the parts of the open
-    // family (tabs) keeps the heading with the tabs and only starts the list from the beginning.
+    // Another muscle starts at the very top. Another part of the open family (tabs): phones also
+    // go to the top; large screens keep the card where it is, and if the tabs stick at the top,
+    // the new list starts right below them.
     effect(() => {
       const subject = this.subjectKey();
       const part = this.exercises.selectedMuscle()?.id ?? null;
@@ -282,8 +259,8 @@ export class ExercisePanel {
         const previous = this.shown;
         this.shown = { subject, part };
         if (!previous || subject === null) return;
-        if (subject !== previous.subject) this.scrollToTop();
-        else if (part !== previous.part) this.scrollToList();
+        if (subject !== previous.subject || this.sheet.active()) this.scrollToTop();
+        else if (part !== previous.part) this.keepPlaceOnTabSwitch();
       });
     });
   }
@@ -302,6 +279,9 @@ export class ExercisePanel {
     };
     this.detailHeight.set(this.host.nativeElement.clientHeight);
     this.openingByClick = exerciseId;
+    // Names must be in place before the browser captures the old state.
+    this.animatedCards.set(this.cardsInView());
+    this.appRef.tick();
     this.transition(
       () => {
         this.exercises.openExerciseById(exerciseId);
@@ -364,9 +344,21 @@ export class ExercisePanel {
     return this.t().difficulty[difficulty];
   }
 
-  /** view-transition-name shared by a list card and the detail page, e.g. "ex-title-lat-pulldown". */
+  /**
+   * view-transition-name shared by a list card and the detail page, e.g. "ex-title-lat-pulldown".
+   * Only for the cards in view when opening and the open exercise (see animatedCards); all others
+   * get none.
+   */
   protected vtName(part: 'card' | 'title' | 'photo', exerciseId: string): string {
-    return `ex-${part}-${exerciseId}`;
+    const named =
+      this.animatedCards().has(exerciseId) ||
+      this.exercises.openExercise()?.exercise.id === exerciseId;
+    return named ? `ex-${part}-${exerciseId}` : 'none';
+  }
+
+  /** A photo that can't load (API down) leaves its dark frame instead of a broken-image icon. */
+  protected hideBroken(event: Event): void {
+    (event.target as HTMLElement).style.visibility = 'hidden';
   }
 
   protected photo(exercise: ExerciseSummary, position: ExerciseImage['position']) {
@@ -389,13 +381,6 @@ export class ExercisePanel {
 
   protected retryDetail(exerciseId: string): void {
     this.prefetch(exerciseId);
-  }
-
-  /** Phones: remembers on every scroll whether the tab selection currently sticks at the top. */
-  protected trackStuck(): void {
-    const stickPoint = this.stickPoint();
-    const scroller = this.scroller()?.nativeElement;
-    this.tabsStuck = stickPoint !== null && !!scroller && scroller.scrollTop >= stickPoint - 1;
   }
 
   protected tabClass(index: number): string {
@@ -425,7 +410,12 @@ export class ExercisePanel {
    * (or shows its error note).
    */
   private async prepareDetail(exerciseId: string): Promise<void> {
-    const ready = this.exercises.loadDetail(exerciseId);
+    const details = this.exercises.loadDetail(exerciseId);
+    // Decode the photo up front: an undecoded image would pop in during the animation.
+    const exercise = this.exercises.allExercises().find((e) => e.id === exerciseId);
+    const start = exercise && this.photo(exercise, 'start');
+    const photo = start ? decodeImage(start.url) : Promise.resolve();
+    const ready = Promise.all([details, photo]);
     const timeout = new Promise<void>((resolve) => setTimeout(resolve, PREPARE_TIMEOUT_MS));
     await Promise.race([ready, timeout]).catch(() => undefined);
   }
@@ -440,42 +430,65 @@ export class ExercisePanel {
     }
   }
 
-  /** Very top of the card: heading and list from the start. */
-  private scrollToTop(): void {
-    const list = this.list()?.nativeElement;
+  /** Ids of the exercise cards visible in the card right now (with a little margin). */
+  private cardsInView(): ReadonlySet<string> {
     const scroller = this.scroller()?.nativeElement;
-    if (list) list.scrollTop = 0;
-    if (scroller) scroller.scrollTop = 0;
+    if (!scroller) return new Set();
+    const view = scroller.getBoundingClientRect();
+    const margin = 80;
+    const ids = new Set<string>();
+    for (const card of scroller.querySelectorAll<HTMLElement>('[data-card-id]')) {
+      const box = card.getBoundingClientRect();
+      if (box.bottom > view.top - margin && box.top < view.bottom + margin) {
+        ids.add(card.dataset['cardId'] ?? '');
+      }
+    }
+    return ids;
   }
 
   /**
-   * Desktop: the list starts from the top again. Phones: heading and list scroll together. While
-   * the heading is still visible the card stays where it is, so you can click quickly through the
-   * parts; once the selection sticks, the card goes back to the point where it starts sticking,
-   * so the new list begins right below it.
+   * Very top of the card: heading and list from the start. Again once the new list is rendered,
+   * since the browser keeps the old position while the content is swapped (scroll anchoring).
    */
-  private scrollToList(): void {
-    const list = this.list()?.nativeElement;
-    if (list) list.scrollTop = 0;
-    if (!this.sheet.active() || !this.tabsStuck) return;
+  private scrollToTop(): void {
+    const toTop = () => {
+      const list = this.list()?.nativeElement;
+      const scroller = this.scroller()?.nativeElement;
+      if (list) list.scrollTop = 0;
+      if (scroller) scroller.scrollTop = 0;
+    };
+    toTop();
+    afterNextRender(toTop, { injector: this.injector });
+  }
+
+  /**
+   * Large screens, switching tabs: if the tabs stick at the top, the card goes to the point where
+   * they start sticking, so the new list begins right below them. Otherwise it stays exactly where
+   * it is. Measured before and set after rendering, since the heading of the new part may be
+   * longer or shorter and the browser would otherwise shift the position (scroll anchoring).
+   */
+  private keepPlaceOnTabSwitch(): void {
+    const scroller = this.scroller()?.nativeElement;
+    const stickPoint = this.stickPoint();
+    if (!scroller || stickPoint === null) return;
+    const before = scroller.scrollTop;
+    const stuck = before >= stickPoint - 1;
     afterNextRender(
       () => {
-        // The heading of the new part may be longer or shorter, so measure after rendering.
-        const stickPoint = this.stickPoint();
-        const scroller = this.scroller()?.nativeElement;
-        if (stickPoint !== null && scroller) scroller.scrollTop = stickPoint;
+        const target = stuck ? this.stickPoint() : before;
+        if (target !== null) scroller.scrollTop = target;
       },
       { injector: this.injector },
     );
   }
 
-  /** Phones: scroll position at which the tab selection starts to stick (null without tabs). */
+  /** Large screens: scroll position at which the tabs start to stick (null without tabs). */
   private stickPoint(): number | null {
     const scroller = this.scroller()?.nativeElement;
     const heading = this.headingText()?.nativeElement;
     const block = this.tabBlock()?.nativeElement;
-    if (!this.sheet.active() || !scroller || !heading || !block) return null;
-    // Where the selection sits without sticking: right after the heading (plus its own margin).
+    if (!scroller || !heading || !block) return null;
+    // Where the tabs sit without sticking: right after the heading (plus their own margin).
     // Layout offsets (both relative to the card) ignore scrolling and running animations.
     const naturalTop =
       heading.offsetTop +
@@ -484,4 +497,11 @@ export class ExercisePanel {
       parseFloat(getComputedStyle(block).marginTop);
     return Math.max(0, naturalTop - STICKY_TOP);
   }
+}
+
+/** Loads and decodes an image; resolves either way, a broken image just isn't ready earlier. */
+function decodeImage(url: string): Promise<void> {
+  const image = new Image();
+  image.src = url;
+  return image.decode().catch(() => undefined);
 }

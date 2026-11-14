@@ -4,14 +4,15 @@
   height of the close button.
 -->
 @if (sheet.active()) {
+  <!-- The bar is small, the grab area around it is large (about 200 × 36 px) and selects no text -->
   <div
-    class="absolute top-0 left-1/2 z-30 flex -translate-x-1/2 cursor-grab touch-none justify-center px-6 pt-2 pb-1 active:cursor-grabbing"
+    class="absolute top-0 left-1/2 z-30 flex -translate-x-1/2 cursor-grab touch-none justify-center px-20 pt-3 pb-5 select-none active:cursor-grabbing"
     role="button"
     tabindex="0"
     [attr.aria-label]="sheet.full() ? t().panel.shrink : t().panel.expand"
     (pointerdown)="sheet.onPointerDown($event)"
     (pointermove)="sheet.onPointerMove($event)"
-    (pointerup)="sheet.onPointerUp()"
+    (pointerup)="sheet.onPointerUp($event)"
     (pointercancel)="sheet.onPointerUp()"
     (keydown.enter)="sheet.toggle()"
   >
@@ -33,50 +34,48 @@
 </button>
 
 <!--
-  List view — phone: this whole block scrolls (the heading scrolls away); desktop: the heading
-  stays put and only the exercise list scrolls.
-  Open exercise — everywhere: one scroll area. The detail page sits in the list where its card was,
+  One scroll area for heading and list: the heading scrolls away. Large screens: the tabs stick
+  at the top meanwhile. Open exercise: the detail page sits in the list where its card was,
   scrolled to the top, so heading and earlier exercises are above it and later ones pushed below.
-  Phone: text scrolling up fades out at the top edge, above the close button and the selection.
+  Text scrolling up fades out at the top edge, down to where the tabs stick on large screens.
 -->
 <div
   #scroller
-  class="min-h-0 flex-1 overflow-y-auto max-md:[mask-image:linear-gradient(to_bottom,transparent,black_16px)]"
-  [class]="openExercise() ? '' : 'md:flex md:flex-col md:overflow-hidden'"
-  (scroll)="trackStuck()"
+  class="min-h-0 flex-1 overflow-y-auto max-md:[mask-image:linear-gradient(to_bottom,transparent,black_16px)] md:[mask-image:linear-gradient(to_bottom,transparent,black_24px)]"
 >
   @if (heading(); as h) {
-    <!-- Heading -->
+    <!-- Heading: centred on phones (padding on both sides for the close button), left on wide screens -->
     <div
       #headingText
-      class="relative z-10 px-6 pt-11 pr-16 pb-5 md:pointer-events-none md:px-8 md:pt-8 md:pr-20"
+      class="relative z-10 px-16 pt-11 pb-5 text-center md:pointer-events-none md:px-8 md:pt-8 md:pr-20 md:text-left"
       style="view-transition-name: ex-heading"
       [class.hidden]="isolated()"
     >
       <h2 class="font-display text-2xl font-medium tracking-[-0.02em] text-ink md:text-3xl">
         {{ h.name }}
       </h2>
-      @if (h.latinName !== h.name) {
-        <p class="mt-0.5 text-sm text-ink-faint italic">{{ h.latinName }}</p>
-      }
-      <p class="mt-3 text-sm leading-relaxed text-ink-muted md:text-base">{{ h.summary }}</p>
     </div>
 
     <!--
       Whole family vs. one of its parts: a glass selection like the portfolio navigation. The lens
-      glides to the selected (or hovered) entry. Phone: sticks at the height of the close button
-      while the card scrolls. Desktop: the list scrolls up behind it.
+      glides to the selected (or hovered) entry. Large screens: below the heading, sticks at the
+      top once the heading has scrolled away (STICKY_TOP); the list scrolls behind the glass.
+      Phone: floats at the bottom of the card, wide and within thumb's reach; the list scrolls
+      behind it. Absolute to the card (the scroller isn't positioned), so it doesn't scroll.
+      Own view-transition name: while opening or closing an exercise the moving cards are drawn on
+      a layer above the page; with its own layer (drawn later, z-20) the selection stays on top
+      and fades out or in instead of having cards slide over it.
     -->
     @if (exercises.selectedFamily(); as family) {
       <div
         #tabBlock
-        class="pointer-events-none relative z-10 -mt-1 px-6 pr-16 pb-5 max-md:sticky max-md:top-4 md:px-8 md:pr-20"
-        [class.hidden]="isolated()"
+        style="view-transition-name: ex-tabs"
+        class="pointer-events-none relative z-10 -mt-1 px-6 pr-16 pb-5 max-md:absolute max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:mt-0 max-md:bg-linear-to-t max-md:from-surface max-md:from-45% max-md:to-transparent max-md:px-4 max-md:pt-10 max-md:pb-4 md:sticky md:top-6 md:px-8 md:pr-20"
+        [class.hidden]="isolated() || (sheet.active() && !!openExercise())"
       >
         <div
           appGlass
-          #tabPill
-          class="pointer-events-auto relative inline-flex max-w-full rounded-[20px] p-1"
+          class="pointer-events-auto relative inline-flex max-w-full rounded-[20px] p-1 max-md:flex max-md:w-full"
           (mouseleave)="hoveredTab.set(-1)"
         >
           <span
@@ -94,7 +93,7 @@
             type="button"
             (click)="exercises.selectFamily(family.id)"
             (mouseenter)="hoveredTab.set(0)"
-            class="relative min-w-0 rounded-[16px] px-2.5 py-1.5 text-sm leading-tight font-medium hyphens-auto transition-colors md:px-3"
+            class="relative min-w-0 rounded-[16px] px-2.5 py-1.5 text-sm leading-tight font-medium hyphens-auto transition-colors max-md:flex-1 max-md:py-2 md:px-3"
             [class]="tabClass(0)"
             [attr.aria-pressed]="activeTab() === 0"
           >
@@ -106,7 +105,7 @@
               type="button"
               (click)="exercises.selectMuscle(part.id)"
               (mouseenter)="hoveredTab.set($index + 1)"
-              class="relative min-w-0 rounded-[16px] px-2.5 py-1.5 text-sm leading-tight font-medium hyphens-auto transition-colors md:px-3"
+              class="relative min-w-0 rounded-[16px] px-2.5 py-1.5 text-sm leading-tight font-medium hyphens-auto transition-colors max-md:flex-1 max-md:py-2 md:px-3"
               [class]="tabClass($index + 1)"
               [attr.aria-pressed]="activeTab() === $index + 1"
             >
@@ -121,20 +120,33 @@
       #list
       class="px-6 py-5 md:px-8 md:py-6"
       [class]="
-        isolated() ? '!p-0' : openExercise() ? '' : 'md:min-h-0 md:flex-1 md:overflow-y-auto'
+        isolated() ? '!p-0' : !openExercise() && exercises.selectedFamily() ? 'max-md:pb-28' : ''
       "
-      [style.margin-top.px]="listUnderHeading()?.marginTop ?? null"
-      [style.padding-top.px]="listUnderHeading()?.paddingTop ?? null"
-      [style.mask-image]="listUnderHeading()?.mask ?? null"
     >
-      <!-- Exercises, one per row; grouped by part in the "All" view -->
-      <p
-        class="label mb-3 text-ink-faint"
-        style="view-transition-name: ex-count"
-        [class.hidden]="isolated()"
-      >
-        {{ t().panel.exerciseCount(exerciseCount()) }}
-      </p>
+      <!-- The muscles live in the app; the exercises need the API -->
+      @if (exercises.exerciseState() === 'error') {
+        <div class="rounded-2xl bg-paper/60 p-4 text-sm md:p-5" role="alert">
+          <p class="text-ink-soft">{{ t().panel.exercisesFailed }}</p>
+          <button
+            type="button"
+            (click)="exercises.load()"
+            class="mt-3 rounded-lg bg-accent px-3 py-1.5 font-semibold text-on-accent transition hover:bg-accent-bright"
+          >
+            {{ t().retry }}
+          </button>
+        </div>
+      } @else if (exercises.exerciseState() === 'loading') {
+        <p class="animate-pulse text-sm text-ink-faint">{{ t().panel.exercisesLoading }}</p>
+      } @else {
+        <!-- Exercises, one per row; grouped by part in the "All" view -->
+        <p
+          class="label mb-3 text-ink-faint"
+          style="view-transition-name: ex-count"
+          [class.hidden]="isolated()"
+        >
+          {{ t().panel.exerciseCount(exerciseCount()) }}
+        </p>
+      }
       @for (section of sections(); track $index; let si = $index) {
         @if (section.secondary) {
           <div
@@ -143,7 +155,6 @@
             [class.hidden]="isolated()"
           >
             <h3 class="font-display text-base font-medium text-ink-soft">{{ section.title }}</h3>
-            <p class="mt-0.5 text-xs text-ink-faint">{{ t().panel.secondaryHint }}</p>
           </div>
         } @else if (section.title) {
           <h3
@@ -198,6 +209,7 @@
     class="group flex w-full items-start gap-3 rounded-2xl bg-paper/60 p-4 text-left transition hover:bg-paper md:p-5"
     style="view-transition-class: ex-card"
     [style.view-transition-name]="vtName('card', ex.id)"
+    [attr.data-card-id]="ex.id"
   >
     <span class="mt-0.5 font-mono text-xs text-ink-faint group-hover:text-accent">
       {{ number.toString().padStart(2, '0') }}
@@ -220,7 +232,10 @@
           {{ difficultyLabel(ex.difficulty) }}
         </span>
       </div>
-      <p class="mt-2.5 text-sm leading-relaxed text-ink-muted">{{ ex.description }}</p>
+      <!-- Phones: no description, so the card stays short; it's on the detail page anyway -->
+      <p class="mt-2.5 text-sm leading-relaxed text-ink-muted max-md:hidden">
+        {{ ex.description }}
+      </p>
     </div>
     @if (photo(ex, 'start'); as start) {
       <!--
@@ -233,6 +248,7 @@
       >
         <img
           [src]="start.url"
+          (error)="hideBroken($event)"
           [width]="start.width"
           [height]="start.height"
           alt=""
@@ -312,6 +328,7 @@
           >
             <img
               [src]="start.url"
+              (error)="hideBroken($event)"
               [width]="start.width"
               [height]="start.height"
               [alt]="t().panel.photo(open.exercise.name, !!end)"
@@ -321,6 +338,7 @@
             @if (end) {
               <img
                 [src]="end.url"
+                (error)="hideBroken($event)"
                 [width]="end.width"
                 [height]="end.height"
                 alt=""

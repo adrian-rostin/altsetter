@@ -9,7 +9,6 @@ const de = {
   siteDescription:
     'Tippe einen Muskel am 3D-Körper an und finde passende Übungen fürs Gym – mit Ausführungstipps und häufigen Fehlern.',
 
-  loadFailed: 'Die Übungen konnten gerade nicht geladen werden.',
   retry: 'Erneut versuchen',
 
   menu: {
@@ -38,7 +37,6 @@ const de = {
     all: 'Alle',
     exerciseCount: (n: number) => `${n} ${n === 1 ? 'Übung' : 'Übungen'}`,
     alsoTrains: (name: string) => `Trainiert auch: ${name}`,
-    secondaryHint: 'Der Muskel arbeitet hier mit, ist aber nicht der Hauptmuskel.',
     noExercisesFor: 'Noch keine Übungen für',
     back: 'Zurück zu den Übungen',
     focus: 'Fokus',
@@ -47,6 +45,8 @@ const de = {
     mistakes: 'Häufige Fehler',
     detailFailed: 'Hinweise zur Ausführung konnten gerade nicht geladen werden.',
     detailLoading: 'Hinweise werden geladen …',
+    exercisesFailed: 'Die Übungen konnten gerade nicht geladen werden.',
+    exercisesLoading: 'Übungen werden geladen …',
     photo: (name: string, moving: boolean) =>
       moving ? `${name}: Start- und Endposition im Wechsel` : `${name}: Ausführung`,
     /** Label under every photo; AI images must be marked as such. */
@@ -73,7 +73,6 @@ const en: Messages = {
   siteDescription:
     'Tap a muscle on the 3D body and find matching gym exercises – with form tips and common mistakes.',
 
-  loadFailed: "The exercises couldn't be loaded right now.",
   retry: 'Try again',
 
   menu: {
@@ -102,7 +101,6 @@ const en: Messages = {
     all: 'All',
     exerciseCount: (n: number) => `${n} ${n === 1 ? 'exercise' : 'exercises'}`,
     alsoTrains: (name: string) => `Also trains: ${name}`,
-    secondaryHint: 'The muscle helps out here but isn’t the main target.',
     noExercisesFor: 'No exercises yet for',
     back: 'Back to the exercises',
     focus: 'Focus',
@@ -111,6 +109,8 @@ const en: Messages = {
     mistakes: 'Common mistakes',
     detailFailed: "The form tips couldn't be loaded right now.",
     detailLoading: 'Loading tips …',
+    exercisesFailed: "The exercises couldn't be loaded right now.",
+    exercisesLoading: 'Loading exercises …',
     photo: (name: string, moving: boolean) =>
       moving ? `${name}: start and end position, alternating` : `${name}: how it's done`,
     aiGenerated: 'AI-generated',

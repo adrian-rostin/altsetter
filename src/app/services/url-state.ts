@@ -40,9 +40,10 @@ export class UrlState {
   });
 
   constructor() {
-    // Read the URL as soon as the catalog (and with it all valid ids) has arrived.
+    // Read the URL once the exercises (and with them all valid exercise ids) have arrived. If
+    // they failed to load, the muscle in the URL is still shown.
     effect(() => {
-      if (this.exercises.loadState() !== 'ready' || this.restored) return;
+      if (this.exercises.exerciseState() === 'loading' || this.restored) return;
       untracked(() => {
         this.restored = true;
         this.apply(this.location.path());
