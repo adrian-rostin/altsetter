@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MuscleViewer } from './components/muscle-viewer/muscle-viewer';
 import { ExercisePanel } from './components/exercise-panel/exercise-panel';
+import { Search } from './components/search/search';
 import { I18n, LANGUAGES } from './i18n/i18n';
 import { type MeshSelection } from './models/exercise.model';
 import { ExerciseService } from './services/exercise.service';
@@ -9,7 +10,7 @@ import { panelLayout } from './layout/panel-layout';
 
 @Component({
   selector: 'app-root',
-  imports: [MuscleViewer, ExercisePanel],
+  imports: [MuscleViewer, ExercisePanel, Search],
   templateUrl: './app.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {

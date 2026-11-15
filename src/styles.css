@@ -254,3 +254,146 @@ select {
     transition: opacity 0.2s ease;
   }
 }
+
+/* ───────────── Suche (src/app/components/search) ───────────── */
+
+/* Handy: runder Glasknopf oben links, der beim Antippen auf die ganze Breite wächst.
+   Groß: kleine, langgezogene Glasperle oben in der Mitte, die beim Fokussieren wie Spotlight
+   nach unten wandert und größer wird. */
+.search-box {
+  position: absolute;
+  z-index: 45;
+  top: 14px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  transition:
+    width 380ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 380ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    top 380ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-radius 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.search-box.is-open {
+  width: calc(100vw - 32px);
+}
+.search-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--pf-ink-soft);
+}
+.search-input {
+  min-width: 0;
+  flex: 1;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--pf-ink);
+  font-size: 16px; /* ab 16px zoomt iOS beim Fokussieren nicht hinein */
+  outline: none;
+  transition: opacity 200ms ease;
+}
+.search-input::placeholder {
+  color: var(--pf-ink-faint);
+}
+.search-input::-webkit-search-cancel-button {
+  appearance: none;
+}
+.search-close {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 6px;
+  border-radius: 999px;
+  color: var(--pf-ink-muted);
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+.search-close:hover {
+  background: rgb(255 255 255 / 0.08);
+  color: var(--pf-ink);
+}
+.search-results {
+  position: absolute;
+  z-index: 45;
+  top: 68px;
+  right: 16px;
+  left: 16px;
+  max-height: calc(100dvh - 92px);
+  overflow-y: auto;
+  border-radius: 24px;
+  background: rgb(32 30 26 / 0.94);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: 0 24px 60px -16px rgb(0 0 0 / 0.7);
+}
+.search-backdrop {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  background: rgb(0 0 0 / 0.35);
+}
+
+@media (max-width: 767px) {
+  /* Zu ist auf dem Handy nur das Symbol zu sehen. */
+  .search-box:not(.is-open) .search-input {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .search-box {
+    left: 50%;
+    width: 288px;
+    height: 40px;
+    border-radius: 20px;
+    transform: translateX(-50%);
+  }
+  .search-box.is-open {
+    top: 12vh;
+    width: min(640px, calc(100vw - 64px));
+    height: 56px;
+    border-radius: 28px;
+  }
+  .search-icon {
+    width: 40px;
+    height: 40px;
+  }
+  .search-box.is-open .search-icon {
+    width: 52px;
+    height: 56px;
+  }
+  .search-box.is-open .search-input {
+    font-size: 18px;
+  }
+  .search-results {
+    top: calc(12vh + 66px);
+    right: auto;
+    left: 50%;
+    width: min(640px, calc(100vw - 64px));
+    max-height: 60vh;
+    transform: translateX(-50%);
+  }
+  .search-backdrop {
+    background: rgb(0 0 0 / 0.45);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-box {
+    transition: none;
+  }
+}

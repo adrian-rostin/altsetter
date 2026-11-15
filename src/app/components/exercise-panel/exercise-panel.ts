@@ -52,6 +52,8 @@ const STICKY_TOP = 24;
  * reacts right away; usually the hover (or the touch itself) has already loaded them.
  */
 const PREPARE_TIMEOUT_MS = 300;
+/** Distance in px from the end of the list at which the next page loads. */
+const LOAD_MORE_MARGIN = 600;
 
 /**
  * The card with the selected muscle (or muscle family), its exercises and the exercise detail page.
@@ -132,17 +134,14 @@ export class ExercisePanel {
     return sections.filter((s) => s.exercises.length);
   });
 
-  protected readonly exerciseCount = computed(() =>
-    this.sections()
-      .filter((s) => !s.secondary)
-      .reduce((sum, s) => sum + s.exercises.length, 0),
-  );
+  /** All exercises of the muscle, also those not loaded yet. */
+  protected readonly exerciseCount = this.exercises.exerciseTotal;
 
   /** The exercise whose details are shown, with its notes and trained muscles. */
   protected readonly openExercise = computed(() => {
     const open = this.exercises.openExercise();
     if (!open) return null;
-    const { exercise, muscles, detail, detailFailed } = open;
+    const { exercise, muscles, detail, detailFailed, similar } = open;
     const named = (ids: string[]) =>
       ids.map((id) => this.exercises.muscleById(id)).filter((m): m is Muscle => m !== null);
     return {
@@ -151,6 +150,7 @@ export class ExercisePanel {
       also: named(muscles.also),
       detail,
       detailFailed,
+      similar,
     };
   });
 
@@ -371,7 +371,7 @@ export class ExercisePanel {
    */
   protected prefetch(exerciseId: string): void {
     this.exercises.loadDetail(exerciseId).catch(() => undefined);
-    const exercise = this.exercises.allExercises().find((e) => e.id === exerciseId);
+    const exercise = this.exercises.exerciseById(exerciseId);
     const end = exercise && this.photo(exercise, 'end');
     if (end && !this.preloaded.has(end.url)) {
       this.preloaded.add(end.url);
@@ -379,8 +379,21 @@ export class ExercisePanel {
     }
   }
 
+  /** Near the end of the list, the next page of exercises loads (not while one is open). */
+  protected onScroll(): void {
+    const scroller = this.scroller()?.nativeElement;
+    if (!scroller || this.openExercise()) return;
+    const left = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+    if (left < LOAD_MORE_MARGIN) this.exercises.loadMore();
+  }
+
   protected retryDetail(exerciseId: string): void {
     this.prefetch(exerciseId);
+  }
+
+  /** Opens a similar exercise; its page replaces the current one, scrolled to the top. */
+  protected openSimilar(exerciseId: string): void {
+    void this.exercises.showExercise(exerciseId);
   }
 
   protected tabClass(index: number): string {
@@ -412,7 +425,7 @@ export class ExercisePanel {
   private async prepareDetail(exerciseId: string): Promise<void> {
     const details = this.exercises.loadDetail(exerciseId);
     // Decode the photo up front: an undecoded image would pop in during the animation.
-    const exercise = this.exercises.allExercises().find((e) => e.id === exerciseId);
+    const exercise = this.exercises.exerciseById(exerciseId);
     const start = exercise && this.photo(exercise, 'start');
     const photo = start ? decodeImage(start.url) : Promise.resolve();
     const ready = Promise.all([details, photo]);

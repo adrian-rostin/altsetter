@@ -45,12 +45,23 @@ const de = {
     mistakes: 'Häufige Fehler',
     detailFailed: 'Hinweise zur Ausführung konnten gerade nicht geladen werden.',
     detailLoading: 'Hinweise werden geladen …',
+    similar: 'Ähnliche Übungen',
     exercisesFailed: 'Die Übungen konnten gerade nicht geladen werden.',
     exercisesLoading: 'Übungen werden geladen …',
     photo: (name: string, moving: boolean) =>
       moving ? `${name}: Start- und Endposition im Wechsel` : `${name}: Ausführung`,
     /** Label under every photo; AI images must be marked as such. */
     aiGenerated: 'KI-generiert',
+  },
+
+  search: {
+    placeholder: 'Übung suchen',
+    open: 'Suche öffnen',
+    close: 'Suche schließen',
+    noResults: 'Keine passende Übung gefunden.',
+    count: (n: number) => `${n} Treffer`,
+    loadingMore: 'Weitere werden geladen …',
+    failed: 'Die Suche ist gerade nicht erreichbar.',
   },
 
   difficulty: {
@@ -109,11 +120,22 @@ const en: Messages = {
     mistakes: 'Common mistakes',
     detailFailed: "The form tips couldn't be loaded right now.",
     detailLoading: 'Loading tips …',
+    similar: 'Similar exercises',
     exercisesFailed: "The exercises couldn't be loaded right now.",
     exercisesLoading: 'Loading exercises …',
     photo: (name: string, moving: boolean) =>
       moving ? `${name}: start and end position, alternating` : `${name}: how it's done`,
     aiGenerated: 'AI-generated',
+  },
+
+  search: {
+    placeholder: 'Search exercises',
+    open: 'Open search',
+    close: 'Close search',
+    noResults: 'No matching exercise found.',
+    count: (n: number) => `${n} ${n === 1 ? 'match' : 'matches'}`,
+    loadingMore: 'Loading more …',
+    failed: "Search isn't available right now.",
   },
 
   difficulty: {

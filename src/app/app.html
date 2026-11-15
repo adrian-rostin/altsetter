@@ -8,21 +8,28 @@
     (muscleSelected)="onMuscleSelected($event)"
   />
 
-  <!-- App name: back to the start view (nothing selected, full body) -->
-  <h1 class="absolute top-5 left-6 z-10">
+  <!-- App name: back to the start view. Phones: centred (the search sits top left); else top left. -->
+  <h1
+    class="absolute top-5 left-1/2 z-10 -translate-x-1/2 transition-opacity md:left-6 md:translate-x-0"
+    [class.max-md:opacity-0]="exercises.searchOpen()"
+  >
     <a
       href="/"
       (click)="goHome($event)"
-      class="font-display text-xl font-semibold tracking-[-0.01em] text-ink uppercase transition hover:text-accent"
+      class="font-display text-xl font-semibold tracking-[-0.01em] text-accent-bright uppercase transition hover:text-accent"
       >Altsetter</a
     >
   </h1>
+
+  <!-- Exercise search: phones top left, large screens top centre -->
+  <app-search />
 
   <!-- Burger menu: opens the side menu -->
   <button
     type="button"
     (click)="exercises.menuOpen.set(true)"
     class="absolute top-3.5 right-4 z-10 rounded-xl p-2 text-ink-soft transition hover:bg-paper-raised/80 hover:text-ink md:right-6"
+    [class.max-md:opacity-0]="exercises.searchOpen()"
     [attr.aria-label]="t().menu.open"
     [attr.aria-expanded]="exercises.menuOpen()"
   >
@@ -58,7 +65,7 @@
       [attr.aria-label]="t().menu.label"
     >
       <div class="flex items-center justify-between px-6 pt-5 pb-4">
-        <span class="font-display text-lg font-semibold tracking-[-0.01em] text-ink uppercase"
+        <span class="font-display text-lg font-semibold tracking-[-0.01em] text-accent-bright uppercase"
           >Altsetter</span
         >
         <button

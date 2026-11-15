@@ -41,6 +41,7 @@
 -->
 <div
   #scroller
+  (scroll)="onScroll()"
   class="min-h-0 flex-1 overflow-y-auto max-md:[mask-image:linear-gradient(to_bottom,transparent,black_16px)] md:[mask-image:linear-gradient(to_bottom,transparent,black_24px)]"
 >
   @if (heading(); as h) {
@@ -183,6 +184,12 @@
           }
         </ul>
       }
+      <!-- The next page loads when scrolling near the end (see onScroll) -->
+      @if (exercises.loadingMore() && !isolated()) {
+        <p class="mt-4 animate-pulse text-center text-sm text-ink-faint">
+          {{ t().search.loadingMore }}
+        </p>
+      }
     </div>
   } @else if (exercises.unknownMeshName(); as meshName) {
     <!-- Clicked a mesh that has no data yet -->
@@ -288,34 +295,40 @@
       [style.view-transition-name]="vtName('card', open.exercise.id)"
       [style.min-height.px]="detailHeight()"
     >
-      <button
-        type="button"
-        appGlass
-        (click)="closeDetail()"
-        class="absolute top-4 left-4 z-10 rounded-full p-2 text-ink-soft transition-colors hover:text-ink md:top-6 md:left-6"
-        style="view-transition-name: ex-back"
-        [attr.aria-label]="t().panel.back"
+      <!--
+        Back button and title stick at the top while the page scrolls; the page scrolls behind the
+        bar. The title sits between the back and the card's close button (pr-16 / md:pr-20).
+      -->
+      <div
+        class="sticky top-0 z-10 flex items-start gap-3 rounded-t-3xl bg-surface/90 px-4 pt-4 pr-16 pb-3 backdrop-blur-md md:px-6 md:pt-6 md:pr-20"
       >
-        <svg
-          class="h-5 w-5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
+        <button
+          type="button"
+          appGlass
+          (click)="closeDetail()"
+          class="relative shrink-0 rounded-full p-2 text-ink-soft transition-colors hover:text-ink"
+          style="view-transition-name: ex-back"
+          [attr.aria-label]="t().panel.back"
         >
-          <path d="M19 12H5M11 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </button>
-
-      <div class="px-6 pt-4 pb-8 md:px-8 md:pt-6">
-        <!-- Title sits between the back and the close button -->
+          <svg
+            class="h-5 w-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+            <path d="M19 12H5M11 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
         <h3
-          class="mx-12 w-fit pt-1.5 font-display text-xl leading-tight font-medium tracking-[-0.02em] text-ink md:text-2xl"
+          class="w-fit pt-1.5 font-display text-xl leading-tight font-medium tracking-[-0.02em] text-ink md:text-2xl"
           [style.view-transition-name]="vtName('title', open.exercise.id)"
         >
           {{ open.exercise.name }}
         </h3>
+      </div>
 
+      <div class="px-6 pb-8 md:px-8">
         <!--
           Start photo, then the end photo fades in and out again, like a slow GIF (.ex-photo-end in
           styles.css). Holds like the plank only have the start photo.
@@ -466,6 +479,59 @@
             </p>
           } @else {
             <p class="mt-6 animate-pulse text-sm text-ink-faint">{{ t().panel.detailLoading }}</p>
+          }
+
+          <!--
+            Similar exercises (API: same muscles in the same roles, at most five). Hidden while
+            loading and when none fit well enough.
+          -->
+          @if (open.similar?.length) {
+            <section class="mt-8">
+              <h4 class="font-display text-base font-medium text-ink">{{ t().panel.similar }}</h4>
+              <ul class="mt-3 space-y-2">
+                @for (ex of open.similar; track ex.id) {
+                  <li>
+                    <button
+                      type="button"
+                      (click)="openSimilar(ex.id)"
+                      (pointerenter)="prefetch(ex.id)"
+                      (focus)="prefetch(ex.id)"
+                      class="group flex w-full items-center gap-3 rounded-2xl bg-paper/60 p-3 text-left transition hover:bg-paper"
+                    >
+                      @if (photo(ex, 'start'); as start) {
+                        <img
+                          [src]="start.url"
+                          (error)="hideBroken($event)"
+                          [width]="start.width"
+                          [height]="start.height"
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          class="aspect-[3/2] w-20 shrink-0 rounded-lg bg-photo object-cover"
+                        />
+                      }
+                      <div class="min-w-0 flex-1">
+                        <p class="font-display text-[15px] leading-snug font-medium text-ink">
+                          {{ ex.name }}
+                        </p>
+                        <p class="mt-0.5 truncate text-xs text-ink-muted">
+                          {{ equipmentLabel(ex.equipment) }}
+                        </p>
+                      </div>
+                      <svg
+                        class="h-5 w-5 shrink-0 text-ink-faint transition group-hover:translate-x-0.5 group-hover:text-accent"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                      >
+                        <path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                  </li>
+                }
+              </ul>
+            </section>
           }
         </div>
       </div>

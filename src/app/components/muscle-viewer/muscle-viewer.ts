@@ -505,7 +505,7 @@ export class MuscleViewer {
         .filter((m) => !m.familyId)
         .map((m) => [m.id]),
       // Opening an exercise frames all muscles it trains.
-      ...this.exercises.allExercises().map((e) => [...e.primaryMuscles, ...e.secondaryMuscles]),
+      ...this.exercises.knownExercises().map((e) => [...e.primaryMuscles, ...e.secondaryMuscles]),
     ];
     const idle: (cb: () => void) => void =
       'requestIdleCallback' in window

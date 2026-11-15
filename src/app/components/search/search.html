@@ -1,0 +1,118 @@
+<!-- Dims and closes: phones behind the wide field, large screens like Spotlight -->
+@if (open()) {
+  <div class="search-backdrop animate-fade-in" (click)="close()" aria-hidden="true"></div>
+}
+
+<!--
+  The field. Phones: closed it is just the round icon button; tapping it widens the glass to the
+  full width. Large screens: a small pill that moves down and grows when focused.
+-->
+<div appGlass class="search-box" [class.is-open]="open()" role="search">
+  <button
+    type="button"
+    class="search-icon"
+    (click)="openSearch()"
+    [attr.aria-label]="t().search.open"
+    [attr.tabindex]="open() ? -1 : null"
+  >
+    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M16 16l4.5 4.5" stroke-linecap="round" />
+    </svg>
+  </button>
+  <input
+    #input
+    type="search"
+    class="search-input"
+    enterkeyhint="search"
+    autocomplete="off"
+    spellcheck="false"
+    [placeholder]="t().search.placeholder"
+    [attr.aria-label]="t().search.placeholder"
+    [attr.aria-expanded]="showResults()"
+    aria-controls="search-results"
+    [value]="query()"
+    (input)="onInput(input.value)"
+    (focus)="open.set(true)"
+    (keydown)="onKeydown($event)"
+  />
+  @if (open()) {
+    <button
+      type="button"
+      class="search-close"
+      (click)="close()"
+      [attr.aria-label]="t().search.close"
+    >
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
+        <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+      </svg>
+    </button>
+  }
+</div>
+
+<!-- Results from the API, best first -->
+@if (showResults()) {
+  <div
+    id="search-results"
+    class="search-results animate-fade-in"
+    role="listbox"
+    (scroll)="onResultsScroll($event)"
+  >
+    @if (state() === 'error') {
+      <p class="px-4 py-5 text-sm text-ink-muted">{{ t().search.failed }}</p>
+    } @else if (state() === 'done' && !results().length) {
+      <p class="px-4 py-5 text-sm text-ink-muted">{{ t().search.noResults }}</p>
+    } @else {
+      <p class="label px-4 pt-3 text-ink-faint">{{ t().search.count(total()) }}</p>
+      <ul class="p-2" [class.opacity-60]="state() === 'loading'">
+        @for (ex of results(); track ex.id) {
+          <li>
+            <button
+              type="button"
+              role="option"
+              (click)="select(ex.id)"
+              (mouseenter)="active.set($index)"
+              class="flex w-full items-center gap-3 rounded-2xl p-2 text-left transition-colors"
+              [class.bg-paper-raised]="active() === $index"
+              [attr.aria-selected]="active() === $index"
+            >
+              @if (photoUrl(ex); as url) {
+                <img
+                  [src]="url"
+                  alt=""
+                  width="1536"
+                  height="1024"
+                  decoding="async"
+                  class="aspect-[3/2] w-16 shrink-0 rounded-lg bg-photo object-cover"
+                />
+              }
+              <span class="min-w-0 flex-1">
+                <span class="block font-display text-[15px] leading-snug font-medium text-ink">
+                  {{ ex.name }}
+                </span>
+                <!-- Tags: the main muscles it trains (accent), then the equipment -->
+                <span class="mt-1 flex flex-wrap gap-1">
+                  @for (muscle of mainMuscles(ex); track muscle) {
+                    <span
+                      class="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent-bright"
+                      >{{ muscle }}</span
+                    >
+                  }
+                  @for (item of ex.equipment; track item.id) {
+                    <span
+                      class="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-muted"
+                      >{{ item.name }}</span
+                    >
+                  }
+                </span>
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+      @if (loadingMore()) {
+        <p class="animate-pulse px-4 pb-4 text-xs text-ink-faint">{{ t().search.loadingMore }}</p>
+      }
+    }
+  </div>
+}
