@@ -33,16 +33,20 @@ export class I18n {
       this.document
         .querySelector('meta[name="description"]')
         ?.setAttribute('content', MESSAGES[lang].siteDescription);
-      try {
-        this.document.defaultView?.localStorage.setItem(STORAGE_KEY, lang);
-      } catch {
-        // Storage can be blocked (private mode, settings); the choice then lasts for this visit.
-      }
     });
   }
 
+  /**
+   * Switches the language and remembers the choice for the next visit. Only an explicit choice is
+   * stored (see the privacy policy); without one the browser language applies.
+   */
   setLang(lang: Lang): void {
     this.lang.set(lang);
+    try {
+      this.document.defaultView?.localStorage.setItem(STORAGE_KEY, lang);
+    } catch {
+      // Storage can be blocked (private mode, settings); the choice then lasts for this visit.
+    }
   }
 }
 
