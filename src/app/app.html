@@ -91,8 +91,6 @@
         @for (link of legalLinks(); track link.href) {
           <a
             [href]="link.href"
-            target="_blank"
-            rel="noopener"
             class="flex items-center justify-between rounded-xl px-3 py-3 text-base font-medium text-ink transition hover:bg-paper-raised hover:text-ink"
           >
             {{ link.label }}
