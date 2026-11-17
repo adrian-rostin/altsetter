@@ -1,6 +1,35 @@
 <main
   class="relative h-dvh w-screen overflow-hidden bg-[radial-gradient(ellipse_at_center,_#2a2722_0%,_#171512_70%)] text-ink"
 >
+  <!--
+    Barrierefreie Muskelauswahl: Der 3D-Körper ist nur per Maus/Touch bedienbar. Diese Navigation
+    gibt Tastatur- und Screenreader-Nutzern denselben Einstieg. Sie ist visuell versteckt und
+    erscheint (wie ein Skip-Link), sobald ein Eintrag den Fokus bekommt.
+  -->
+  <nav
+    [attr.aria-label]="t().a11y.muscleNav"
+    class="sr-only z-30 focus-within:not-sr-only focus-within:absolute focus-within:top-2 focus-within:left-2 focus-within:flex focus-within:max-w-[calc(100vw-1rem)] focus-within:flex-wrap focus-within:gap-1 focus-within:rounded-2xl focus-within:bg-surface focus-within:p-2 focus-within:shadow-2xl focus-within:shadow-black/50"
+  >
+    @for (family of exercises.families(); track family.id) {
+      <button
+        type="button"
+        (click)="selectFamily(family.id)"
+        class="rounded-lg px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-paper-raised focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+      >
+        {{ family.name }}
+      </button>
+    }
+    @for (muscle of loneMuscles(); track muscle.id) {
+      <button
+        type="button"
+        (click)="selectMuscle(muscle.id)"
+        class="rounded-lg px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-paper-raised focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+      >
+        {{ muscle.name }}
+      </button>
+    }
+  </nav>
+
   <!-- Full-screen 3D canvas; the body slides aside while the panel is open -->
   <app-muscle-viewer
     class="absolute inset-0"

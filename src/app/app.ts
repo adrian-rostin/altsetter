@@ -37,6 +37,11 @@ export class App {
     return layout.mode === 'side' ? layout : null;
   });
 
+  /** Muscles that belong to no family – listed on their own in the accessible muscle nav. */
+  protected readonly loneMuscles = computed(() =>
+    this.exercises.muscles().filter((m) => m.familyId === null),
+  );
+
   constructor() {
     // Address bar ↔ selection (reload, shared links, back button).
     inject(UrlState);
@@ -61,5 +66,15 @@ export class App {
 
   protected onMuscleSelected(selection: MeshSelection): void {
     this.exercises.selectByMesh(selection.meshName);
+  }
+
+  /** Accessible muscle nav: select a whole muscle family (same as clicking it on the body). */
+  protected selectFamily(familyId: string): void {
+    this.exercises.selectFamily(familyId);
+  }
+
+  /** Accessible muscle nav: select a muscle that has no family. */
+  protected selectMuscle(muscleId: string): void {
+    this.exercises.selectMuscle(muscleId);
   }
 }
