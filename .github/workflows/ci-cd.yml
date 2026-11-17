@@ -33,9 +33,23 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+  # Läuft parallel zu "quality", damit die Pipeline schneller ist; "build" wartet auf beide.
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Unit-Tests (Vitest)
+        run: npm test
+
   build:
     name: Build
-    needs: quality
+    needs: [quality, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1

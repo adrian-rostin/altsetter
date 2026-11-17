@@ -5,6 +5,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "test": "ng test --watch=false",
     "watch": "ng build --watch --configuration development",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -43,12 +44,14 @@
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^16.5.0",
+    "jsdom": "^31.0.1",
     "postcss": "^8.5.32",
     "prettier": "^3.9.10",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.9.2",
-    "typescript-eslint": "^8.71.0"
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^4.1.12"
   },
   "engines": {
     "node": ">=22.12"

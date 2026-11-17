@@ -1,0 +1,8 @@
+/* TypeScript-Konfiguration für die Unit-Tests (Vitest über @angular/build:unit-test). */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec"
+  },
+  "include": ["src/**/*.spec.ts"]
+}
