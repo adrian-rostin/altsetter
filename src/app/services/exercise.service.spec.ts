@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import { ExerciseService } from './exercise.service';
+import { ExerciseService, capOldest } from './exercise.service';
 import { AltsetterApi } from './altsetter-api';
 import { I18n, type Lang } from '../i18n/i18n';
 import { type ExerciseDetail, type Page } from '../models/exercise.model';
@@ -171,5 +171,30 @@ describe('ExerciseService', () => {
       });
       expect(service.selectedMuscle()?.id).toBe('upper-chest');
     });
+  });
+});
+
+describe('capOldest', () => {
+  const sample = (): Map<string, number> =>
+    new Map([
+      ['a', 1],
+      ['b', 2],
+      ['c', 3],
+      ['d', 4],
+    ]);
+
+  it('drops the oldest entries to stay within the cap', () => {
+    expect([...capOldest(sample(), 2, null).keys()]).toEqual(['c', 'd']);
+  });
+
+  it('never evicts the kept entry, even if it is the oldest', () => {
+    const capped = capOldest(sample(), 2, 'a');
+    expect(capped.size).toBe(2);
+    expect([...capped.keys()]).toEqual(['a', 'd']);
+  });
+
+  it('leaves a map that is within the cap untouched', () => {
+    const m = sample();
+    expect(capOldest(m, 10, null)).toBe(m);
   });
 });
