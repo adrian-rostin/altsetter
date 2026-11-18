@@ -1,12 +1,20 @@
 <main
   class="relative h-dvh w-screen overflow-hidden bg-[radial-gradient(ellipse_at_center,_#2a2722_0%,_#171512_70%)] text-ink"
 >
-  <!-- Full-screen 3D canvas; the body slides aside while the panel is open -->
-  <app-muscle-viewer
-    class="absolute inset-0"
-    [panelOpen]="exercises.hasSelection()"
-    (muscleSelected)="onMuscleSelected($event)"
-  />
+  <!--
+    Full-screen 3D canvas; the body slides aside while the panel is open.
+    Lazy geladen (@defer), damit Kopfzeile und Suche sofort erscheinen und das schwere
+    Three.js-Bundle erst danach als eigener Chunk nachgeladen wird.
+  -->
+  @defer (on immediate) {
+    <app-muscle-viewer
+      class="absolute inset-0"
+      [panelOpen]="exercises.hasSelection()"
+      (muscleSelected)="onMuscleSelected($event)"
+    />
+  } @placeholder {
+    <div class="absolute inset-0" aria-hidden="true"></div>
+  }
 
   <!-- App name: back to the start view. Phones: centred (the search sits top left); else top left. -->
   <h1
