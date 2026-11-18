@@ -76,6 +76,10 @@ const de = {
     placeholderBefore: 'Lege das Anatomie-Modell unter',
     placeholderAfter: 'ab, um sie zu ersetzen.',
   },
+
+  a11y: {
+    muscleNav: 'Muskeln auswählen',
+  },
 };
 
 export type Messages = typeof de;
@@ -149,6 +153,10 @@ const en: Messages = {
     placeholderTitle: 'Placeholder figure.',
     placeholderBefore: 'Put the anatomy model at',
     placeholderAfter: 'to replace it.',
+  },
+
+  a11y: {
+    muscleNav: 'Select muscles',
   },
 };
 
