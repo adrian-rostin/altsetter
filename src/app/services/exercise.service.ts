@@ -47,6 +47,13 @@ export type LoadState = 'loading' | 'ready' | 'error';
 /** Exercises per page of a muscle's list; scrolling loads the next page. */
 const PAGE_SIZE = 20;
 
+/**
+ * Upper bound for the full-detail cache, so a long session can't grow it without limit.
+ * Evicted details are simply re-fetched when their exercise is opened again; the lighter
+ * summaries in the store (which feed the lists) are kept.
+ */
+const MAX_DETAILS = 150;
+
 /** The exercises of one muscle or family as loaded so far, in the order of the card. */
 interface SubjectList {
   ids: readonly string[];
@@ -535,10 +542,11 @@ export class ExerciseService {
   /** Keeps exercise pages from the API: their details, and their summaries in the store. */
   private addDetails(details: readonly ExerciseDetail[]): void {
     if (!details.length) return;
+    const open = this.selection()?.exerciseId ?? null;
     this.details.update((map) => {
       const next = new Map(map);
       for (const detail of details) next.set(detail.id, detail);
-      return next;
+      return capOldest(next, MAX_DETAILS, open);
     });
     this.remember(details.map(summaryOf));
   }
@@ -570,6 +578,20 @@ function without(ids: ReadonlySet<string>, id: string): ReadonlySet<string> {
   const copy = new Set(ids);
   copy.delete(id);
   return copy;
+}
+
+/** Caps a map at `max` entries by dropping the oldest first, but never the entry `keep`. */
+export function capOldest<T>(
+  map: Map<string, T>,
+  max: number,
+  keep: string | null,
+): Map<string, T> {
+  if (map.size <= max) return map;
+  for (const key of map.keys()) {
+    if (map.size <= max) break;
+    if (key !== keep) map.delete(key);
+  }
+  return map;
 }
 
 function emptyList(): SubjectList {
